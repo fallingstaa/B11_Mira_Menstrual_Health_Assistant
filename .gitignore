@@ -1,0 +1,97 @@
+# ======================
+# Environment Variables
+# ======================
+.env
+.env.*
+!.env.example
+
+
+# ======================
+# Node.js Backend
+# ======================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+dist/
+build/
+
+
+# ======================
+# React Native / Expo
+# ======================
+.expo/
+.expo-shared/
+
+android/.gradle/
+android/app/build/
+ios/build/
+
+*.keystore
+*.jks
+
+
+# ======================
+# Flutter
+# ======================
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+*.iml
+
+
+# ======================
+# Firebase
+# ======================
+google-services.json
+GoogleService-Info.plist
+
+
+# ======================
+# Database
+# ======================
+*.sqlite
+*.db
+
+
+# ======================
+# AI / RAG
+# ======================
+chroma/
+vector_db/
+embeddings/
+
+
+# ======================
+# IDE Settings
+# ======================
+.vscode/
+.idea/
+
+*.swp
+
+
+# ======================
+# Operating System
+# ======================
+.DS_Store
+Thumbs.db
+
+
+# ======================
+# Logs
+# ======================
+*.log
+logs/
+
+
+# ======================
+# Temporary Files
+# ======================
+*.tmp
+*.cache

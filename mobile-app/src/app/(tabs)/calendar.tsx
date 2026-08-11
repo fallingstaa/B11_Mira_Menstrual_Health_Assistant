@@ -8,30 +8,56 @@ import { AppText } from '@/components/mira/app-text';
 import { Button } from '@/components/mira/button';
 import { Card } from '@/components/mira/card';
 import { Dot } from '@/components/mira/chip';
+import { PeriodDayEditor } from '@/components/mira/period-day-editor';
+import { PeriodEntriesSummary } from '@/components/mira/period-entries-summary';
 import { ScreenContainer } from '@/components/mira/screen-container';
-import { cycleStats, pastPeriods, today } from '@/constants/mock-data';
+import { cycleStats, pastPeriods } from '@/constants/mock-data';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { formatLong, getMonthGrid, isSameDay, isWithinRange, monthLabel, WEEKDAY_LABELS } from '@/utils/date';
+import { useAppState } from '@/context/app-state';
+import { dateKey, getMonthGrid, isSameDay, isWithinRange, monthLabel, WEEKDAY_LABELS } from '@/utils/date';
 
-type DayStatus = 'period' | 'predicted' | 'fertile' | 'none';
-
-function getStatus(date: Date): DayStatus {
-  if (pastPeriods.some((p) => isWithinRange(date, p.start, p.end))) return 'period';
-  if (isWithinRange(date, cycleStats.nextPeriodStart, cycleStats.nextPeriodEnd)) return 'predicted';
-  if (isWithinRange(date, cycleStats.fertileWindowStart, cycleStats.fertileWindowEnd)) return 'fertile';
-  return 'none';
-}
+type DayStatus = 'period' | 'period-end' | 'predicted' | 'fertile' | 'none';
 
 export default function CalendarScreen() {
-  const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const { periodEntries, togglePeriodDay, setPeriodEndDay, updatePeriodDayEntry } = useAppState();
+  // The real device date, not the app's fixed demo date — so "Today" always lands on the actual day.
+  const [today] = useState(() => new Date());
+  const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [selected, setSelected] = useState(today);
+
+  const hasRealEntries = Object.keys(periodEntries).length > 0;
+
+  const getStatus = (date: Date): DayStatus => {
+    const entry = periodEntries[dateKey(date)];
+    if (entry) return entry.isEnd ? 'period-end' : 'period';
+    // Once the user has entered anything real, their data replaces the canned demo history —
+    // only the forward-looking prediction/fertile window (which we can't compute without a
+    // backend) still comes from the mock. A completely fresh session still shows demo history.
+    if (!hasRealEntries && pastPeriods.some((p) => isWithinRange(date, p.start, p.end))) return 'period';
+    if (isWithinRange(date, cycleStats.nextPeriodStart, cycleStats.nextPeriodEnd)) return 'predicted';
+    if (isWithinRange(date, cycleStats.fertileWindowStart, cycleStats.fertileWindowEnd)) return 'fertile';
+    return 'none';
+  };
 
   const grid = useMemo(() => getMonthGrid(cursor.getFullYear(), cursor.getMonth()), [cursor]);
   const status = getStatus(selected);
-  const isToday = isSameDay(selected, today);
+  const selectedEntry = periodEntries[dateKey(selected)];
 
   const changeMonth = (delta: number) => {
     setCursor((c) => new Date(c.getFullYear(), c.getMonth() + delta, 1));
+  };
+
+  const toggleSelectedSymptom = (key: string) => {
+    const symptoms = selectedEntry?.symptoms ?? [];
+    updatePeriodDayEntry(selected, {
+      symptoms: symptoms.includes(key) ? symptoms.filter((s) => s !== key) : [...symptoms, key],
+    });
+  };
+
+  /** Jump to an already-recorded day, even if it's in a different month than currently shown. */
+  const jumpToDay = (date: Date) => {
+    setSelected(date);
+    setCursor(new Date(date.getFullYear(), date.getMonth(), 1));
   };
 
   return (
@@ -64,13 +90,14 @@ export default function CalendarScreen() {
             const dayStatus = getStatus(date);
             const isSelected = isSameDay(date, selected);
             const isTodayCell = isSameDay(date, today);
+            const isPeriod = dayStatus === 'period' || dayStatus === 'period-end';
 
             return (
               <Pressable key={i} style={styles.cell} onPress={() => setSelected(date)}>
                 <View
                   style={[
                     styles.cellInner,
-                    dayStatus === 'period' && { backgroundColor: Colors.primary },
+                    isPeriod && { backgroundColor: Colors.primary },
                     dayStatus === 'predicted' && { backgroundColor: Colors.tint200 },
                     dayStatus === 'fertile' && { backgroundColor: Colors.tealTint },
                     isTodayCell && !isSelected && styles.todayRing,
@@ -78,15 +105,14 @@ export default function CalendarScreen() {
                   ]}>
                   <AppText
                     variant="small"
-                    color={
-                      dayStatus === 'period' || isSelected
-                        ? Colors.textOnPrimary
-                        : inMonth
-                          ? Colors.text
-                          : Colors.textMuted
-                    }>
+                    color={isPeriod || isSelected ? Colors.textOnPrimary : inMonth ? Colors.text : Colors.textMuted}>
                     {date.getDate()}
                   </AppText>
+                  {dayStatus === 'period-end' && (
+                    <View style={styles.endBadge}>
+                      <Ionicons name="flag" size={7} color={Colors.textOnPrimary} />
+                    </View>
+                  )}
                 </View>
               </Pressable>
             );
@@ -100,53 +126,43 @@ export default function CalendarScreen() {
         </View>
       </Card>
 
-      <Card style={styles.detailsCard} delay={80}>
-        <View style={styles.detailsHeader}>
-          <View>
-            <AppText variant="h3">{formatLong(selected)}</AppText>
-            {isToday && (
-              <AppText variant="small" color={Colors.primary} style={{ marginTop: 2 }}>
-                Today
-              </AppText>
-            )}
-          </View>
-          <Dot color={status === 'none' ? Colors.border : statusColor(status)} active />
-        </View>
+      <Button
+        label="View Prediction Details"
+        variant="secondary"
+        icon={<Ionicons name="stats-chart" size={16} color={Colors.primary} />}
+        onPress={() => router.push('/prediction')}
+        style={styles.predictionButton}
+      />
 
-        <AppText variant="body" color={Colors.textSecondary} style={styles.detailsBody}>
-          {statusDescription(status)}
+      {!selectedEntry && (status === 'predicted' || status === 'fertile') && (
+        <AppText variant="small" color={Colors.textSecondary} style={styles.hint}>
+          {status === 'predicted'
+            ? 'Estimated period day, based on your cycle history.'
+            : 'Estimated fertile window.'}
         </AppText>
+      )}
 
-        {status === 'none' && (
-          <Button
-            label="Record period for this day"
-            variant="secondary"
-            onPress={() => router.push('/record')}
-            style={{ marginTop: Spacing.lg }}
-          />
-        )}
-      </Card>
+      <PeriodEntriesSummary
+        entries={periodEntries}
+        activeDate={selected}
+        onSelect={jumpToDay}
+        onRemove={togglePeriodDay}
+        delay={70}
+      />
+
+      <PeriodDayEditor
+        date={selected}
+        entry={selectedEntry}
+        onToggleMark={() => togglePeriodDay(selected)}
+        onSetEndDay={() => setPeriodEndDay(selected)}
+        onClearEndDay={() => updatePeriodDayEntry(selected, { isEnd: false })}
+        onSetFlow={(flow) => updatePeriodDayEntry(selected, { flow })}
+        onToggleSymptom={toggleSelectedSymptom}
+        onSetMood={(mood) => updatePeriodDayEntry(selected, { mood })}
+        delay={80}
+      />
     </ScreenContainer>
   );
-}
-
-function statusColor(status: DayStatus) {
-  if (status === 'period') return Colors.primary;
-  if (status === 'predicted') return Colors.tint300;
-  return Colors.teal;
-}
-
-function statusDescription(status: DayStatus) {
-  switch (status) {
-    case 'period':
-      return 'You logged this as a period day.';
-    case 'predicted':
-      return 'Estimated period day, based on your previous records.';
-    case 'fertile':
-      return 'Estimated fertile window.';
-    default:
-      return 'No record for this day yet.';
-  }
 }
 
 function LegendItem({ color, label }: { color: string; label: string }) {
@@ -161,6 +177,7 @@ function LegendItem({ color, label }: { color: string; label: string }) {
 const styles = StyleSheet.create({
   pageTitle: { marginTop: Spacing.md, marginBottom: Spacing.lg },
   calendarCard: { marginBottom: Spacing.lg },
+  predictionButton: { marginBottom: Spacing.lg },
   monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.lg },
   navButton: {
     width: 34,
@@ -174,9 +191,29 @@ const styles = StyleSheet.create({
   weekdayLabel: { flex: 1, textAlign: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 2 },
-  cellInner: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  cellInner: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
   todayRing: { borderWidth: 1.5, borderColor: Colors.primary },
   selectedCell: { backgroundColor: Colors.primaryDark },
+  endBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 13,
+    height: 13,
+    borderRadius: 7,
+    backgroundColor: Colors.primaryDark,
+    borderWidth: 1.5,
+    borderColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   legendRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -187,7 +224,5 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  detailsCard: { marginBottom: Spacing.xxl },
-  detailsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  detailsBody: { marginTop: Spacing.sm, lineHeight: 20 },
+  hint: { marginBottom: Spacing.md },
 });

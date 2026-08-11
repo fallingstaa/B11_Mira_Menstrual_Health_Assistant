@@ -80,7 +80,7 @@ export default function ProfileScreen() {
       </SectionCard>
 
       <AppText variant="caption" center style={styles.version}>
-        Mira v1.0.0 · Made with 🩷 for first-time menstruators
+        Mira v1.0.0 · Made with care for first-time menstruators
       </AppText>
     </ScreenContainer>
   );

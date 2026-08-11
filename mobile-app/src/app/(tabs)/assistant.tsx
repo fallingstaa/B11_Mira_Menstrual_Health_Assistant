@@ -19,10 +19,11 @@ import { MascotMini } from '@/components/mira/mascot';
 import { TypingDots } from '@/components/mira/typing-dots';
 import { ChatMessage, chatSuggestions, initialChat } from '@/constants/mock-data';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { useAppState } from '@/context/app-state';
 
 const REPLIES: Record<string, string> = {
   'Why do I get cramps?':
-    'Cramps happen when your uterus contracts to shed its lining. A warm compress and gentle movement can really help! 💗',
+    'Cramps happen when your uterus contracts to shed its lining. A warm compress and gentle movement can really help!',
   'Is my flow normal?':
     'Flow varies a lot from person to person — anywhere from light spotting to needing a change every few hours can be normal. If it ever feels unusually heavy, it is worth mentioning to a trusted adult.',
   'How do I use a tampon?':
@@ -34,13 +35,14 @@ const REPLIES: Record<string, string> = {
 function generateReply(text: string): string {
   return (
     REPLIES[text] ??
-    "That's a great question! While I'm just a prototype right now, in the full version I'll give you a caring, science-based answer tailored to your cycle. 💫"
+    "That's a great question! While I'm just a prototype right now, in the full version I'll give you a caring, science-based answer tailored to your cycle."
   );
 }
 
 let messageId = initialChat.length + 1;
 
 export default function AssistantScreen() {
+  const { markFirstQuestionAsked } = useAppState();
   const [messages, setMessages] = useState<ChatMessage[]>(initialChat);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
@@ -62,6 +64,7 @@ export default function AssistantScreen() {
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     scrollToEnd();
+    markFirstQuestionAsked();
 
     setTyping(true);
     scrollToEnd();

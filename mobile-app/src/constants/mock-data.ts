@@ -32,6 +32,7 @@ export const pastPeriods: { start: Date; end: Date }[] = [
 ];
 
 export const flowLevels = [
+  { key: 'spotting', label: 'Spotting', color: '#F8C2CF' },
   { key: 'light', label: 'Light', color: '#F0A0B5' },
   { key: 'medium', label: 'Medium', color: '#D94667' },
   { key: 'heavy', label: 'Heavy', color: '#AD0E38' },
@@ -55,6 +56,44 @@ export const moodOptions = [
   { key: 'anxious', label: 'Anxious', icon: '😟' },
   { key: 'irritable', label: 'Irritable', icon: '😤' },
   { key: 'tired', label: 'Tired', icon: '🥱' },
+];
+
+export type HealthTip = {
+  id: string;
+  tag: string;
+  tagColor: string;
+  tagTint: string;
+  icon: string;
+  iconColor: string;
+  iconTint: string;
+  title: string;
+  body: string;
+};
+
+// Shown on the first-time Home screen while a new user has no cycle data of their own yet.
+export const healthTips: HealthTip[] = [
+  {
+    id: 'h1',
+    tag: 'Wellness',
+    tagColor: '#3B82F6',
+    tagTint: '#EAF1FE',
+    icon: 'water-outline',
+    iconColor: '#3B82F6',
+    iconTint: '#EAF1FE',
+    title: 'Stay hydrated!',
+    body: 'Drink 8 glasses of water to help reduce bloating.',
+  },
+  {
+    id: 'h2',
+    tag: 'Pain',
+    tagColor: '#E8A23A',
+    tagTint: '#FDF3E3',
+    icon: 'thermometer-outline',
+    iconColor: '#E8A23A',
+    iconTint: '#FDF3E3',
+    title: 'Cramp relief',
+    body: 'A warm compress on your lower abdomen eases cramps.',
+  },
 ];
 
 export type NotificationItem = {
@@ -225,7 +264,7 @@ export const initialChat: ChatMessage[] = [
   {
     id: 'c1',
     from: 'mira',
-    text: "Hi Amara! I'm Mira 🩷 I'm here to answer any period or body questions — no question is too weird!",
+    text: "Hi Amara! I'm Mira. I'm here to answer any period or body questions — no question is too weird!",
     time: '9:41 AM',
   },
   {
@@ -237,7 +276,7 @@ export const initialChat: ChatMessage[] = [
   {
     id: 'c3',
     from: 'mira',
-    text: 'Totally normal! Especially in your first few years of getting your period, cycles can range from 21–35 days. Mira will keep learning your pattern the more you log 💫',
+    text: 'Totally normal! Especially in your first few years of getting your period, cycles can range from 21–35 days. Mira will keep learning your pattern the more you log.',
     time: '9:42 AM',
   },
 ];

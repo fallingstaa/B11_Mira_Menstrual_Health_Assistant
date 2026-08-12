@@ -57,7 +57,7 @@ export default function LoginScreen() {
               Remember me
             </AppText>
           </Pressable>
-          <Pressable hitSlop={6}>
+          <Pressable hitSlop={6} onPress={() => router.push('/forgot-password')}>
             <AppText variant="small" color={Colors.primary}>
               Forgot password?
             </AppText>

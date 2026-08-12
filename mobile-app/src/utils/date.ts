@@ -33,6 +33,11 @@ export function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+/** Stable per-calendar-day string key, for indexing per-day records in a map. */
+export function dateKey(date: Date): string {
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
 export function isWithinRange(date: Date, start: Date, end: Date): boolean {
   const d = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
   const s = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
@@ -42,6 +47,14 @@ export function isWithinRange(date: Date, start: Date, end: Date): boolean {
 
 export function monthLabel(date: Date): string {
   return `${MONTHS_LONG[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+/** Time-of-day greeting ("Good morning"/"afternoon"/"evening") based on the device clock. */
+export function greeting(date: Date = new Date()): string {
+  const hour = date.getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
 }
 
 /** Cells for a month grid, including leading/trailing days from adjacent months. */

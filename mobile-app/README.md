@@ -1,56 +1,63 @@
-# Welcome to your Expo app 👋
+# Mira Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Expo/React Native app for Mira - Teen Menstrual Health Assistant, targeting first-time menstruators.
 
-## Get started
+## Setup
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### 1. Install dependencies
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Configure environment variables
 
-### Other setup steps
+```bash
+cp .env.example .env
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+| Variable | Where to get it |
+| --- | --- |
+| `EXPO_PUBLIC_FIREBASE_API_KEY`, `_AUTH_DOMAIN`, `_PROJECT_ID`, `_STORAGE_BUCKET`, `_MESSAGING_SENDER_ID`, `_APP_ID` | Firebase Console → Project Settings → General → Your apps → Web app. This is a **separate, non-secret** config from the backend's Admin SDK credentials — safe to ship in the app bundle. |
+| `EXPO_PUBLIC_API_URL` | Where the backend is reachable from your device. `http://localhost:5000` works for web/simulator; a **physical device via Expo Go needs your computer's LAN IP instead** (e.g. `http://192.168.1.23:5000`) — `localhost` on a phone means the phone itself. |
+
+Also required, one-time, in Firebase Console: **Authentication → Sign-in method → enable Email/Password**. Without it, register/login fail even with a correct `.env`.
+
+### 3. Start the backend first
+
+The app talks to the real backend for auth and (increasingly) app data — see `../backend/README.md`. Start it before testing:
+
+```bash
+cd ../backend && npm run dev
+```
+
+### 4. Start the app
+
+```bash
+npx expo start
+```
+
+Scan the QR code with **Expo Go**, or press `a`/`i` for an Android/iOS emulator.
+
+**Expo Go version note:** this project is pinned to **Expo SDK 54** deliberately — not the latest. SDK 55+ isn't published to the public App Store's Expo Go build yet, so a newer SDK means iOS testing requires either a signed `sign.expo.dev` build (re-signs every 7 days on a free Apple ID) or a custom EAS dev-client build. SDK 54 works with the plain App Store/Play Store Expo Go app with no extra setup. Don't bump `expo` in `package.json` without checking this is still true.
+
+## Current Status
+
+**Wired to the real backend (Firebase + MongoDB, not mock data):**
+
+- `login.tsx`, `register.tsx`, `forgot-password.tsx` — full auth flow via `context/auth-context.tsx`
+- `(tabs)/profile.tsx` — loads the real signed-in user via `GET /api/profile/me`, persists the notification/check-in toggles via `PUT /api/profile/me`, and logout is real
+- `utils/api.ts` — shared authenticated-fetch helper (attaches a fresh Firebase ID token per request) used by all of the above; every other screen that gets wired to the backend should go through this, not a one-off `fetch`
+
+**Still running on `constants/mock-data.ts` / local-only `context/app-state.tsx` state (not yet connected to the backend):**
+
+- `(tabs)/home.tsx`, `(tabs)/calendar.tsx`, `(tabs)/education.tsx`, `(tabs)/assistant.tsx`
+- `checkin.tsx`, `record.tsx`, `prediction.tsx`, `notifications.tsx`, `article/[id].tsx`
+- Profile screen's edit button (pencil icon) — no edit form/modal built yet
+
+So today: you can create a real account and log in/out for real, and Profile shows your actual data — but everything past that (cycle stats, articles, chat, notifications) is still the same fake prototype data regardless of which account is logged in. The backend already has working, tested endpoints for all of this (`/api/menstrual/*`, `/api/ai/*`, `/api/reminders`, `/api/education/*`) — rewiring each screen to call them via `apiRequest()` instead of importing from `mock-data.ts` is the remaining work.
 
 ## Learn more
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- [Expo documentation](https://docs.expo.dev/)
+- [Expo Router](https://docs.expo.dev/router/introduction/) — this project uses file-based routing under `src/app/`

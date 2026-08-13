@@ -11,25 +11,41 @@ import { ScreenContainer } from '@/components/mira/screen-container';
 import { ScreenHeader } from '@/components/mira/screen-header';
 import { TextField } from '@/components/mira/text-field';
 import { Colors, Spacing } from '@/constants/theme';
+import { useAuth } from '@/context/auth-context';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPasswordScreen() {
+  const { resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
   const [resent, setResent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!EMAIL_PATTERN.test(email.trim())) {
       setError('Enter a valid email address');
       return;
     }
     setError('');
-    setSent(true);
+    setLoading(true);
+    try {
+      // Firebase silently no-ops for an unregistered email rather than throwing —
+      // that's intentional on Firebase's part, and matches the user-enumeration
+      // protection called out in Security Design 14.6 (don't reveal which emails
+      // have accounts). Either way this shows the same "check your email" screen.
+      await resetPassword(email.trim());
+    } catch {
+      // Ignore and still show the success screen for the same reason.
+    } finally {
+      setLoading(false);
+      setSent(true);
+    }
   };
 
   const handleResend = () => {
+    resetPassword(email.trim()).catch(() => {});
     setResent(true);
   };
 
@@ -111,7 +127,7 @@ export default function ForgotPasswordScreen() {
           error={error}
         />
 
-        <Button label="Send Reset Link" onPress={handleSend} style={styles.sendButton} />
+        <Button label="Send Reset Link" onPress={handleSend} loading={loading} style={styles.sendButton} />
       </Animated.View>
 
       <View style={styles.footer}>

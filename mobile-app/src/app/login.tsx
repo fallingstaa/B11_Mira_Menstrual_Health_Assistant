@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import { AppText } from '@/components/mira/app-text';
@@ -11,11 +11,39 @@ import { ScreenContainer } from '@/components/mira/screen-container';
 import { SocialButton } from '@/components/mira/social-button';
 import { TextField } from '@/components/mira/text-field';
 import { Colors, Spacing } from '@/constants/theme';
+import { useAuth } from '@/context/auth-context';
+
+/** Firebase's auth/xxx-yyy error codes turned into copy a first-time user won't be confused by. */
+function loginErrorMessage(err: unknown): string {
+  const code = (err as { code?: string })?.code;
+  if (code === 'auth/invalid-email') return 'That email address looks off — check for a typo.';
+  if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+    return 'Email or password is incorrect.';
+  }
+  if (code === 'auth/too-many-requests') return 'Too many attempts — try again in a moment.';
+  return 'Something went wrong logging in. Please try again.';
+}
 
 export default function LoginScreen() {
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await login(email.trim(), password);
+      router.replace('/(tabs)/home');
+    } catch (err) {
+      setError(loginErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ScreenContainer>
@@ -37,7 +65,10 @@ export default function LoginScreen() {
           keyboardType="email-address"
           autoCapitalize="none"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => {
+            setEmail(text);
+            if (error) setError('');
+          }}
         />
         <TextField
           label="Password"
@@ -45,7 +76,11 @@ export default function LoginScreen() {
           placeholder="••••••••"
           isPassword
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            if (error) setError('');
+          }}
+          error={error}
         />
 
         <View style={styles.optionsRow}>
@@ -64,7 +99,7 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
-        <Button label="Log In" onPress={() => router.replace('/(tabs)/home')} style={styles.loginButton} />
+        <Button label="Log In" onPress={handleLogin} loading={loading} style={styles.loginButton} />
 
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
@@ -72,7 +107,13 @@ export default function LoginScreen() {
           <View style={styles.dividerLine} />
         </View>
 
-        <SocialButton label="Continue with Google" onPress={() => router.replace('/(tabs)/home')} />
+        {/* Google sign-in needs an OAuth client set up in Firebase/Google Cloud
+            Console first (see chat notes) — not wired to real auth yet, so this
+            just says so instead of silently faking a login. */}
+        <SocialButton
+          label="Continue with Google"
+          onPress={() => Alert.alert('Coming soon', 'Google sign-in isn\'t set up yet — log in with email for now.')}
+        />
       </Animated.View>
 
       <View style={styles.footer}>

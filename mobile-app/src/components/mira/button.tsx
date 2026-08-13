@@ -44,11 +44,9 @@ export function Button({
     <AnimatedPressable
       onPress={disabled || loading ? undefined : onPress}
       onPressIn={() => {
-        // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutated by design.
         scale.value = withTiming(0.96, { duration: 90 });
       }}
       onPressOut={() => {
-        // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutated by design.
         scale.value = withTiming(1, { duration: 140 });
       }}
       style={[

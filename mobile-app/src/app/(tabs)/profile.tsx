@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/mira/app-text';
@@ -8,12 +8,67 @@ import { Card } from '@/components/mira/card';
 import { IconCircle } from '@/components/mira/icon-circle';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { SettingsRow } from '@/components/mira/settings-row';
-import { mockUser } from '@/constants/mock-data';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { useAuth } from '@/context/auth-context';
+import { apiRequest } from '@/utils/api';
+
+type Preferences = { pushNotifications: boolean; checkinReminders: boolean };
+
+type ProfileData = {
+  userId: string;
+  name: string;
+  email: string;
+  preferredLanguage: string;
+  preferences: Preferences;
+};
 
 export default function ProfileScreen() {
-  const [notifOn, setNotifOn] = useState(true);
-  const [checkinRemindersOn, setCheckinRemindersOn] = useState(true);
+  const { logout } = useAuth();
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    apiRequest<ProfileData>('/profile/me')
+      .then((data) => {
+        if (!cancelled) setProfile(data);
+      })
+      .catch((err) => {
+        console.error('[profile] failed to load /profile/me:', err);
+        if (!cancelled) setError("Couldn't load your profile.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** Flips the switch immediately, saves in the background, rolls back if the save fails. */
+  const updatePreference = async (patch: Partial<Preferences>) => {
+    if (!profile) return;
+    const previous = profile.preferences;
+    const next = { ...previous, ...patch };
+    setProfile({ ...profile, preferences: next });
+
+    try {
+      await apiRequest('/profile/me', { method: 'PUT', body: { preferences: next } });
+    } catch (err) {
+      console.error('[profile] failed to save preference, rolling back:', err);
+      setProfile((p) => (p ? { ...p, preferences: previous } : p));
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/login');
+  };
+
+  const avatarInitial = profile?.name?.trim().charAt(0).toUpperCase() || '?';
 
   return (
     <ScreenContainer>
@@ -24,30 +79,47 @@ export default function ProfileScreen() {
       <Card style={styles.profileCard}>
         <IconCircle color={Colors.tint100} size={64}>
           <AppText variant="h1" color={Colors.primary}>
-            {mockUser.avatarInitial}
+            {avatarInitial}
           </AppText>
         </IconCircle>
         <View style={{ flex: 1 }}>
-          <AppText variant="h3">{mockUser.name}</AppText>
-          <AppText variant="small" style={{ marginTop: 2 }}>
-            {mockUser.email}
-          </AppText>
+          {loading ? (
+            <AppText variant="small">Loading…</AppText>
+          ) : error ? (
+            <AppText variant="small" color={Colors.primary}>
+              {error}
+            </AppText>
+          ) : (
+            <>
+              <AppText variant="h3">{profile?.name}</AppText>
+              <AppText variant="small" style={{ marginTop: 2 }}>
+                {profile?.email}
+              </AppText>
+            </>
+          )}
         </View>
+        {/* TODO: no edit screen/modal wired up yet — still a stub, next up after this. */}
         <Pressable style={styles.editButton} hitSlop={8}>
           <Ionicons name="create-outline" size={17} color={Colors.primary} />
         </Pressable>
       </Card>
 
       <SectionCard title="Preferences" delay={60}>
-        <SettingsRow icon="language-outline" color={Colors.lavender} tint={Colors.lavenderTint} label="Language" value={mockUser.language} />
+        <SettingsRow
+          icon="language-outline"
+          color={Colors.lavender}
+          tint={Colors.lavenderTint}
+          label="Language"
+          value={profile?.preferredLanguage ?? 'English'}
+        />
         <Divider />
         <SettingsRow
           icon="notifications-outline"
           color={Colors.info}
           tint={Colors.infoTint}
           label="Push notifications"
-          toggle={notifOn}
-          onToggle={setNotifOn}
+          toggle={profile?.preferences.pushNotifications ?? true}
+          onToggle={(value) => updatePreference({ pushNotifications: value })}
         />
         <Divider />
         <SettingsRow
@@ -55,8 +127,8 @@ export default function ProfileScreen() {
           color={Colors.peach}
           tint={Colors.peachTint}
           label="Daily check-in reminders"
-          toggle={checkinRemindersOn}
-          onToggle={setCheckinRemindersOn}
+          toggle={profile?.preferences.checkinReminders ?? true}
+          onToggle={(value) => updatePreference({ checkinReminders: value })}
         />
       </SectionCard>
 
@@ -75,7 +147,7 @@ export default function ProfileScreen() {
           icon="log-out-outline"
           destructive
           label="Log out"
-          onPress={() => router.replace('/login')}
+          onPress={handleLogout}
         />
       </SectionCard>
 

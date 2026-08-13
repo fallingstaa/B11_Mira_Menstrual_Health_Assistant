@@ -9,6 +9,20 @@ const dns = require("dns");
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 const connectDB = async () => {
+    // A Mongoose connection is an EventEmitter — an 'error' event with no listener
+    // crashes the entire Node process, even long after the initial connect() above
+    // succeeded (a transient network blip, Atlas maintenance, etc. is enough). These
+    // keep any *later* hiccup as a log line instead of taking the whole server down.
+    mongoose.connection.on("error", (error) => {
+        console.error("MongoDB connection error:", error.message);
+    });
+    mongoose.connection.on("disconnected", () => {
+        console.warn("MongoDB disconnected — mongoose will attempt to reconnect automatically");
+    });
+    mongoose.connection.on("reconnected", () => {
+        console.log("MongoDB reconnected");
+    });
+
     try {
         await mongoose.connect(process.env.MONGODB_URI);
 

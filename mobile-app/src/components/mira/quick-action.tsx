@@ -22,9 +22,7 @@ export function QuickAction({ label, icon, color, tint, onPress }: Props) {
   return (
     <Pressable
       onPress={onPress}
-      // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutated by design.
       onPressIn={() => (scale.value = withSpring(0.94, { damping: 14, stiffness: 300 }))}
-      // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutated by design.
       onPressOut={() => (scale.value = withSpring(1, { damping: 10, stiffness: 260 }))}
       style={styles.pressable}>
       <Animated.View style={[styles.tile, Shadow.card, animatedStyle]}>

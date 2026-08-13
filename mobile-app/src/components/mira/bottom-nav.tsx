@@ -1,5 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { BottomTabBarProps } from 'expo-router/tabs';
+// expo-router/tabs stopped re-exporting this type at the expo-router version paired
+// with SDK 54 — it lives in @react-navigation/bottom-tabs directly, which expo-router
+// depends on anyway (so this resolves to an already-installed, version-matched copy).
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -63,9 +66,7 @@ function TabButton({
   return (
     <Pressable
       onPress={onPress}
-      // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutated by design.
       onPressIn={() => (scale.value = withSpring(0.88, { damping: 12, stiffness: 300 }))}
-      // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutated by design.
       onPressOut={() => (scale.value = withSpring(1, { damping: 10, stiffness: 260 }))}
       style={styles.item}
       hitSlop={4}>

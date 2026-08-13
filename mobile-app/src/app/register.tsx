@@ -1,6 +1,6 @@
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import { AppText } from '@/components/mira/app-text';
@@ -10,12 +10,50 @@ import { ScreenContainer } from '@/components/mira/screen-container';
 import { SocialButton } from '@/components/mira/social-button';
 import { TextField } from '@/components/mira/text-field';
 import { Colors, Spacing } from '@/constants/theme';
+import { useAuth } from '@/context/auth-context';
+
+function registerErrorMessage(err: unknown): string {
+  const code = (err as { code?: string })?.code;
+  if (code === 'auth/email-already-in-use') return 'An account with this email already exists.';
+  if (code === 'auth/invalid-email') return 'That email address looks off — check for a typo.';
+  if (code === 'auth/weak-password') return 'Password must be at least 8 characters.';
+  return 'Something went wrong creating your account. Please try again.';
+}
 
 export default function RegisterScreen() {
+  const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleRegister = async () => {
+    if (!name.trim() || !email.trim() || !password) {
+      setError('Please fill in all fields.');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (password !== confirm) {
+      setError('Passwords don\'t match.');
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+    try {
+      await register(name.trim(), email.trim(), password);
+      router.replace('/(tabs)/home');
+    } catch (err) {
+      setError(registerErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ScreenContainer>
@@ -40,14 +78,29 @@ export default function RegisterScreen() {
           value={email}
           onChangeText={setEmail}
         />
-        <TextField label="Password" icon="lock-closed-outline" placeholder="At least 8 characters" isPassword value={password} onChangeText={setPassword} />
-        <TextField label="Confirm password" icon="lock-closed-outline" placeholder="Re-enter password" isPassword value={confirm} onChangeText={setConfirm} />
+        <TextField
+          label="Password"
+          icon="lock-closed-outline"
+          placeholder="At least 8 characters"
+          isPassword
+          value={password}
+          onChangeText={setPassword}
+        />
+        <TextField
+          label="Confirm password"
+          icon="lock-closed-outline"
+          placeholder="Re-enter password"
+          isPassword
+          value={confirm}
+          onChangeText={setConfirm}
+          error={error}
+        />
 
         <AppText variant="small" color={Colors.textMuted} style={styles.terms}>
           By continuing, you agree to Mira&apos;s Terms of Service and Privacy Policy. Your data always stays private.
         </AppText>
 
-        <Button label="Create Account" onPress={() => router.replace('/(tabs)/home')} style={styles.registerButton} />
+        <Button label="Create Account" onPress={handleRegister} loading={loading} style={styles.registerButton} />
 
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
@@ -55,7 +108,12 @@ export default function RegisterScreen() {
           <View style={styles.dividerLine} />
         </View>
 
-        <SocialButton label="Continue with Google" onPress={() => router.replace('/(tabs)/home')} />
+        {/* Google sign-in needs an OAuth client set up in Firebase/Google Cloud
+            Console first — not wired to real auth yet. */}
+        <SocialButton
+          label="Continue with Google"
+          onPress={() => Alert.alert('Coming soon', 'Google sign-in isn\'t set up yet — create an account with email for now.')}
+        />
       </Animated.View>
 
       <View style={styles.footer}>

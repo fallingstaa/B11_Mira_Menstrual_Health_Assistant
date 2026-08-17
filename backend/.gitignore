@@ -22,3 +22,9 @@ serviceAccountKey.json
 *-firebase-adminsdk-*.json
 *.pem
 *.key
+
+# Personal local-only dev tooling — deliberately never pushed to the shared repo (see
+# server.js, which skips mounting these gracefully if they're absent). Delete these two
+# lines if you ever do want to share the test dashboard with the team.
+public/test-ui/
+src/routes/devRoutes.js

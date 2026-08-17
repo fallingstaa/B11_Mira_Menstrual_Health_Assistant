@@ -9,4 +9,21 @@ function toDayKey(date) {
   return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
 }
 
-module.exports = { toDayKey };
+/** Whole-day difference between two dates. Safe on already-UTC-midnight values (see toDayKey) — no DST drift. */
+function daysBetween(a, b) {
+  return Math.round((new Date(b) - new Date(a)) / 86400000);
+}
+
+/**
+ * Route/query params (unlike request bodies) don't go through the Zod `validate`
+ * middleware — `:date` in a URL and `?from=`/`?to=` are always strings, so there's no
+ * schema to parse against. Without this check, a garbage value silently becomes
+ * JavaScript's `Invalid Date` inside toDayKey() rather than a clear 400 — Mongo then
+ * just matches nothing instead of erroring, which reads as "the record doesn't exist"
+ * rather than "the date you sent was malformed".
+ */
+function isValidDateString(value) {
+  return typeof value === "string" && !Number.isNaN(new Date(value).getTime());
+}
+
+module.exports = { toDayKey, daysBetween, isValidDateString };

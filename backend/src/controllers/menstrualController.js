@@ -1,14 +1,19 @@
 const MenstrualRecord = require("../models/MenstrualRecord");
 const { success, successMessage, error } = require("../utils/responseHandler");
 const asyncHandler = require("../utils/asyncHandler");
-const { toDayKey } = require("../utils/dateHelper");
-const { MENSTRUAL_RECORD_SOURCES, MENSTRUAL_STATUS } = require("../utils/constants");
+const { toDayKey, isValidDateString } = require("../utils/dateHelper");
 const { predictNextCycle, cyclePhase, currentCycleDay } = require("../services/predictionService");
+const { recomputeCycleCache } = require("../services/cycleCacheService");
+const { resolveAsOf } = require("../utils/devClock");
 
 const getPrediction = asyncHandler(async (req, res) => {
   const { cycle } = req.user;
   const prediction = predictNextCycle(cycle);
-  const currentDay = currentCycleDay(cycle.lastPeriodStart);
+  // ?asOf=YYYY-MM-DD (dev only, see devClock.js) simulates a different "today" — lets
+  // currentDay/phase be checked without waiting for the real date to catch up. The
+  // predicted dates themselves (nextPeriodStart etc.) don't depend on "today" at all,
+  // only on lastPeriodStart + the cached averages, so asOf never affects those.
+  const currentDay = currentCycleDay(cycle.lastPeriodStart, resolveAsOf(req));
 
   return success(res, {
     currentDay,
@@ -21,6 +26,9 @@ const getPrediction = asyncHandler(async (req, res) => {
 
 const listRecords = asyncHandler(async (req, res) => {
   const { from, to } = req.query;
+  if (from && !isValidDateString(from)) return error(res, "from must be a valid date (YYYY-MM-DD)", 400);
+  if (to && !isValidDateString(to)) return error(res, "to must be a valid date (YYYY-MM-DD)", 400);
+
   const filter = { userId: req.user._id };
   if (from || to) {
     filter.date = {};
@@ -32,16 +40,11 @@ const listRecords = asyncHandler(async (req, res) => {
   return success(res, records);
 });
 
+// Body shape (date/source/status/etc.) is already validated by the `validate`
+// middleware in menstrualRoutes.js (see validators/menstrualValidators.js) before this
+// controller ever runs — req.body here can be trusted as-is.
 const upsertRecord = asyncHandler(async (req, res) => {
   const { date, isPeriodDay, isPeriodEnd, status, flowLevel, symptoms, mood, notes, source } = req.body;
-
-  if (!date) return error(res, "date is required", 400);
-  if (!source || !MENSTRUAL_RECORD_SOURCES.includes(source)) {
-    return error(res, `source must be one of: ${MENSTRUAL_RECORD_SOURCES.join(", ")}`, 400);
-  }
-  if (status && !MENSTRUAL_STATUS.includes(status)) {
-    return error(res, `status must be one of: ${MENSTRUAL_STATUS.join(", ")}`, 400);
-  }
 
   const dayKey = toDayKey(date);
 
@@ -79,12 +82,22 @@ const upsertRecord = asyncHandler(async (req, res) => {
     await req.user.save();
   }
 
+  // Re-derive User.cycle (lastPeriodStart/End, running averages, next-period
+  // prediction) from actual record history — without this, GET /prediction and the
+  // `cycle` block on GET /profile/me never move past their defaults no matter how much
+  // gets logged here. Runs on every write rather than lazily on read so both of those
+  // GETs stay a single cheap document fetch.
+  await recomputeCycleCache(req.user._id);
+
   return success(res, record, 201);
 });
 
 const deleteRecord = asyncHandler(async (req, res) => {
+  if (!isValidDateString(req.params.date)) return error(res, "date must be a valid date (YYYY-MM-DD)", 400);
+
   const dayKey = toDayKey(req.params.date);
   await MenstrualRecord.findOneAndDelete({ userId: req.user._id, date: dayKey });
+  await recomputeCycleCache(req.user._id);
   return successMessage(res, `Record for ${req.params.date} deleted.`);
 });
 

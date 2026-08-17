@@ -14,11 +14,10 @@ async function verifyToken(idToken) {
   return getAuth(firebaseApp).verifyIdToken(idToken);
 }
 
+// Body shape is already validated by the `validate` middleware in authRoutes.js (see
+// validators/authValidators.js) before this controller ever runs.
 const register = asyncHandler(async (req, res) => {
   const { idToken, name } = req.body;
-  if (!idToken || !name) {
-    return error(res, "idToken and name are required", 400);
-  }
 
   const decoded = await verifyToken(idToken);
 
@@ -47,7 +46,6 @@ const register = asyncHandler(async (req, res) => {
 
 const login = asyncHandler(async (req, res) => {
   const { idToken } = req.body;
-  if (!idToken) return error(res, "idToken is required", 400);
 
   const decoded = await verifyToken(idToken);
   let user = await User.findOne({ firebaseUid: decoded.uid });
@@ -79,17 +77,25 @@ const login = asyncHandler(async (req, res) => {
 
 const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
-  if (!email) return error(res, "email is required", 400);
 
   try {
     // TODO: actually deliver this link via an email service (SendGrid/Nodemailer) —
     // Firebase only generates it, it doesn't send it.
     await getAuth(firebaseApp).generatePasswordResetLink(email);
   } catch (err) {
-    // Deliberately swallow "user not found" so this endpoint can't be used to
-    // discover which emails have an account (user-enumeration protection, per
-    // Security Design 14.6).
-    if (err.code !== "auth/user-not-found") throw err;
+    // Deliberately swallow "no account for this email" so this endpoint can't be used
+    // to discover which emails have an account (user-enumeration protection, per
+    // Security Design 14.6) — found via testing that this needed to check for *two*
+    // error shapes, not one: generatePasswordResetLink throws a clean
+    // "auth/user-not-found" for some projects, but for others (confirmed against this
+    // project's real Firebase config) it instead throws a generic "auth/internal-error"
+    // whose message just says it couldn't build the link — which, unguarded, meant a
+    // real email returned 200 while a fake one 500'd: a user-enumeration oracle
+    // through the back door, on the exact endpoint meant to prevent one.
+    const isUnknownEmail =
+      err.code === "auth/user-not-found" ||
+      (err.code === "auth/internal-error" && /unable to create the email action link/i.test(err.message || ""));
+    if (!isUnknownEmail) throw err;
   }
 
   return successMessage(res, "If an account exists for that email, a reset link has been sent.");

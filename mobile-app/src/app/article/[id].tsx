@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
@@ -18,7 +19,7 @@ export default function ArticleScreen() {
 
       <View style={[styles.hero, { backgroundColor: article.tint }]}>
         <IconCircle color={Colors.surface} size={64}>
-          <AppText style={{ fontSize: 30 }}>{article.emoji}</AppText>
+          <Ionicons name={article.icon} size={30} color={article.color} />
         </IconCircle>
       </View>
 

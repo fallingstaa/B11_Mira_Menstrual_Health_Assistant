@@ -17,7 +17,7 @@ export default function EducationScreen() {
   const filtered = category === 'All' ? articles : articles.filter((a) => a.category === category);
 
   return (
-    <ScreenContainer>
+    <ScreenContainer tabBar>
       <AppText variant="h1" style={styles.pageTitle}>
         Education
       </AppText>

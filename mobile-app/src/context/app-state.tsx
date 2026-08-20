@@ -9,17 +9,22 @@ export type PeriodDayEntry = {
   isEnd?: boolean;
   flow?: string;
   symptoms: string[];
-  mood?: string;
+  /** Multi-select, same as symptoms — a day can be "Calm" AND "Anxious" AND anything else at once. */
+  mood: string[];
   notes?: string;
 };
 
 const DEFAULT_CYCLE_LENGTH = 28;
 const DEFAULT_PERIOD_DURATION = 5;
 
-type Streak = { start: Date; end: Date };
+export type Streak = { start: Date; end: Date };
 
-/** Groups marked days into runs of consecutive calendar dates — each run is one logged period. */
-function getPeriodStreaks(entries: Record<string, PeriodDayEntry>): Streak[] {
+/**
+ * Groups marked days into runs of consecutive calendar dates — each run is one logged period.
+ * Exported so prediction.tsx's "Cycle History" can build its list from the same real streaks
+ * this file uses for averageCycleLength, instead of keeping a second copy of this grouping logic.
+ */
+export function getPeriodStreaks(entries: Record<string, PeriodDayEntry>): Streak[] {
   const days = Object.values(entries)
     .map((e) => e.date)
     .sort((a, b) => a.getTime() - b.getTime());
@@ -161,19 +166,19 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         delete next[key];
         return next;
       }
-      return { ...prev, [key]: { date, symptoms: [] } };
+      return { ...prev, [key]: { date, symptoms: [], mood: [] } };
     });
   };
 
   const markPeriodDay = (date: Date) => {
     const key = dateKey(date);
-    setPeriodEntries((prev) => (prev[key] ? prev : { ...prev, [key]: { date, symptoms: [] } }));
+    setPeriodEntries((prev) => (prev[key] ? prev : { ...prev, [key]: { date, symptoms: [], mood: [] } }));
   };
 
   const setPeriodEndDay = (date: Date) => {
     const key = dateKey(date);
     setPeriodEntries((prev) => {
-      const next: Record<string, PeriodDayEntry> = { ...prev, [key]: prev[key] ?? { date, symptoms: [] } };
+      const next: Record<string, PeriodDayEntry> = { ...prev, [key]: prev[key] ?? { date, symptoms: [], mood: [] } };
       Object.keys(next).forEach((k) => {
         next[k] = { ...next[k], isEnd: k === key };
       });

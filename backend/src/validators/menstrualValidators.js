@@ -3,11 +3,27 @@ const { z } = require("zod");
 const {
   MENSTRUAL_RECORD_SOURCES,
   MENSTRUAL_STATUS,
+  SYMPTOM_OPTIONS,
+  MOOD_OPTIONS,
   MIN_MANUAL_CYCLE_LENGTH,
   MAX_MANUAL_CYCLE_LENGTH,
   MIN_MANUAL_PERIOD_LENGTH,
   MAX_MANUAL_PERIOD_LENGTH,
 } = require("../utils/constants");
+
+// symptoms/mood are enum-constrained to the final, locked option lists (see
+// SYMPTOM_OPTIONS/MOOD_OPTIONS in utils/constants.js, mirroring mobile-app's
+// constants/mock-data.ts) — sending anything outside those lists is now a 400, not
+// silently accepted free text. Both are arrays, not a single value each — a day can
+// have more than one symptom or mood at once, no limit on how many.
+const symptomsSchema = z
+  .array(z.enum(SYMPTOM_OPTIONS, { message: `each symptom must be one of: ${SYMPTOM_OPTIONS.join(", ")}` }))
+  .optional()
+  .default([]);
+const moodSchema = z
+  .array(z.enum(MOOD_OPTIONS, { message: `each mood must be one of: ${MOOD_OPTIONS.join(", ")}` }))
+  .optional()
+  .default([]);
 
 const upsertRecordSchema = z.object({
   date: z.iso.date("date must be YYYY-MM-DD"),
@@ -15,8 +31,8 @@ const upsertRecordSchema = z.object({
   isPeriodEnd: z.boolean().optional().default(false),
   status: z.enum(MENSTRUAL_STATUS, { message: `status must be one of: ${MENSTRUAL_STATUS.join(", ")}` }).optional(),
   flowLevel: z.string().trim().min(1).max(40).optional(),
-  symptoms: z.array(z.string().trim().min(1).max(40)).optional().default([]),
-  mood: z.string().trim().min(1).max(40).optional(),
+  symptoms: symptomsSchema,
+  mood: moodSchema,
   notes: z.string().max(1000).optional().default(""),
   source: z.enum(MENSTRUAL_RECORD_SOURCES, { message: `source must be one of: ${MENSTRUAL_RECORD_SOURCES.join(", ")}` }),
 });
@@ -63,8 +79,8 @@ const batchRecordEntrySchema = z.object({
   // Named `flow`, not `flowLevel`, in the batch request body — mapped onto the saved
   // record's `flowLevel` field by the controller, same underlying data either way.
   flow: z.string().trim().min(1).max(40).optional(),
-  symptoms: z.array(z.string().trim().min(1).max(40)).optional().default([]),
-  mood: z.string().trim().min(1).max(40).optional(),
+  symptoms: symptomsSchema,
+  mood: moodSchema,
   notes: z.string().max(1000).optional().default(""),
 });
 

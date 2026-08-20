@@ -37,6 +37,12 @@
           "icon": "./assets/images/android-icon-monochrome.png",
           "color": "#AD0E38"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Mira uses your photos to let you set a profile picture."
+        }
       ]
     ],
     "experiments": {

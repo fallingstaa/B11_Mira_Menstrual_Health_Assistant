@@ -1,14 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/mira/app-text';
 import { Card } from '@/components/mira/card';
+import { CycleRecapModal, RecapCycle } from '@/components/mira/cycle-recap-modal';
 import { IconCircle } from '@/components/mira/icon-circle';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { ScreenHeader } from '@/components/mira/screen-header';
 import { cycleStats, pastPeriods, today } from '@/constants/mock-data';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { getPeriodStreaks, useAppState } from '@/context/app-state';
 import { daysBetween, formatRange, formatShort } from '@/utils/date';
 
 type PhaseKey = 'menstrual' | 'follicular' | 'ovulation' | 'luteal';
@@ -119,14 +122,24 @@ function currentPhase(day: number, phases: PhaseInfo[]) {
 }
 
 export default function PredictionScreen() {
+  const { periodEntries } = useAppState();
+  const hasRealEntries = Object.keys(periodEntries).length > 0;
+  const [recapCycle, setRecapCycle] = useState<RecapCycle | null>(null);
+
   const daysUntilNext = daysBetween(today, cycleStats.nextPeriodStart);
   const phases = buildPhases(cycleStats.averageCycleLength, cycleStats.averagePeriodLength);
   const phase = currentPhase(cycleStats.currentDay, phases);
 
-  const history = pastPeriods
-    .map((p, i, arr) => ({ ...p, cycleLength: i > 0 ? daysBetween(arr[i - 1].start, p.start) : null }))
-    .slice()
-    .reverse();
+  // Once the user has entered anything real, their data replaces the canned demo history here
+  // too, same rule Calendar's grid already follows — otherwise "Cycle History" would keep
+  // showing fake cycles a real recap could never actually explain.
+  const history = useMemo(() => {
+    const streaks = hasRealEntries ? getPeriodStreaks(periodEntries) : pastPeriods;
+    return streaks
+      .map((p, i, arr) => ({ ...p, cycleLength: i > 0 ? daysBetween(arr[i - 1].start, p.start) : null }))
+      .slice()
+      .reverse();
+  }, [hasRealEntries, periodEntries]);
 
   return (
     <ScreenContainer edges={['top', 'left', 'right']}>
@@ -207,8 +220,14 @@ export default function PredictionScreen() {
         <AppText variant="h3" style={styles.cardTitle}>
           Cycle History
         </AppText>
+        <AppText variant="small" color={Colors.textMuted} style={styles.historyHint}>
+          Tap a cycle to see everything logged for it.
+        </AppText>
         {history.map((p, i) => (
-          <View key={i} style={[styles.historyRow, i !== 0 && styles.historyRowBorder]}>
+          <Pressable
+            key={i}
+            onPress={() => setRecapCycle(p)}
+            style={[styles.historyRow, i !== 0 && styles.historyRowBorder]}>
             <View style={{ flex: 1 }}>
               <AppText variant="bodyMedium">
                 {formatRange(p.start, p.end)}, {p.start.getFullYear()}
@@ -222,7 +241,8 @@ export default function PredictionScreen() {
                 {daysBetween(p.start, p.end) + 1} days
               </AppText>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </Pressable>
         ))}
       </Card>
 
@@ -232,6 +252,13 @@ export default function PredictionScreen() {
           Estimated based on your previous records. Actual dates may vary — this is not medical advice.
         </AppText>
       </View>
+
+      <CycleRecapModal
+        visible={!!recapCycle}
+        cycle={recapCycle}
+        entries={periodEntries}
+        onClose={() => setRecapCycle(null)}
+      />
     </ScreenContainer>
   );
 }
@@ -283,7 +310,8 @@ const styles = StyleSheet.create({
   phaseRowBorder: { borderTopWidth: 1, borderTopColor: Colors.border },
   phaseDot: { width: 10, height: 10, borderRadius: 5 },
   phaseLabelRow: { flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: Spacing.xs },
-  historyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md },
+  historyHint: { marginBottom: Spacing.sm },
+  historyRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md },
   historyRowBorder: { borderTopWidth: 1, borderTopColor: Colors.border },
   historyPill: {
     backgroundColor: Colors.tint50,

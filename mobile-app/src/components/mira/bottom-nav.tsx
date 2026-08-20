@@ -10,6 +10,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/mira/app-text';
 import { Colors, Radius, Shadow, Spacing } from '@/constants/theme';
 
+/**
+ * How much bottom clearance a scrolling tab screen needs to keep its last item from ending up
+ * underneath this floating bar. `wrap` below only claims touches inside `bar`'s own rounded
+ * rect (`pointerEvents="box-none"` lets taps in the surrounding padding fall through) — but
+ * `bar` itself has no such exemption, so anything visually sitting underneath it (not just the
+ * icon buttons — the whole rounded rect, including the gaps between them) is unreachable, not
+ * just visually covered. ~75 (bar's own height: paddingVertical + icon pill + label) + up to
+ * ~40 (safe-area bottom inset on devices with a home indicator) + a little breathing room above
+ * the bar so content doesn't sit flush against it. See screen-container.tsx's `tabBar` prop.
+ */
+export const TAB_BAR_CLEARANCE = 130;
+
 const ICONS: Record<string, { on: keyof typeof Ionicons.glyphMap; off: keyof typeof Ionicons.glyphMap; label: string }> = {
   home: { on: 'home', off: 'home-outline', label: 'Home' },
   calendar: { on: 'calendar', off: 'calendar-outline', label: 'Calendar' },

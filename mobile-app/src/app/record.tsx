@@ -1,20 +1,32 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput } from 'react-native';
 
 import { AppText } from '@/components/mira/app-text';
 import { Button } from '@/components/mira/button';
 import { Card } from '@/components/mira/card';
-import { Chip } from '@/components/mira/chip';
+import { CollapsibleChipField } from '@/components/mira/collapsible-chip-field';
 import { DateStepper } from '@/components/mira/date-stepper';
+import { FlowLevelPicker } from '@/components/mira/flow-level-picker';
 import { ModalHeader } from '@/components/mira/modal-header';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { SuccessOverlay } from '@/components/mira/success-overlay';
-import { flowLevels, moodOptions, symptomOptions } from '@/constants/mock-data';
+import { moodOptions, symptomOptions } from '@/constants/mock-data';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
 
-/** Home's "Record Period" quick action (once a first period already exists) — logs a new cycle straight into shared state. */
+/**
+ * Home's "Record Period" quick action (once a first period already exists) — logs a new
+ * cycle straight into shared state.
+ *
+ * One button, not two: earlier this had a separate "Mark as Period Days" step before the
+ * final "Record" — that read as two overlapping actions for what's really one decision.
+ * Now picking the dates + optionally filling in flow/symptoms/mood/notes (all clearly
+ * "optional", never required) all lead to a single "Record" tap, which marks the days AND
+ * saves whatever details were given, together. It's never disabled — there's nothing else
+ * it's waiting on.
+ */
 export default function RecordScreen() {
   const { markPeriodDay, setPeriodEndDay, updatePeriodDayEntry } = useAppState();
   const [today] = useState(() => new Date());
@@ -22,12 +34,16 @@ export default function RecordScreen() {
   const [endDate, setEndDate] = useState(today);
   const [flow, setFlow] = useState('');
   const [symptoms, setSymptoms] = useState<string[]>([]);
-  const [mood, setMood] = useState('');
+  const [mood, setMood] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [saved, setSaved] = useState(false);
 
   const toggleSymptom = (key: string) => {
     setSymptoms((prev) => (prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]));
+  };
+
+  const toggleMood = (key: string) => {
+    setMood((prev) => (prev.includes(key) ? prev.filter((m) => m !== key) : [...prev, key]));
   };
 
   useEffect(() => {
@@ -37,7 +53,7 @@ export default function RecordScreen() {
   }, [saved]);
 
   // Tolerate the two dates being picked/stepped out of order — the earlier one is always the start.
-  const handleSave = () => {
+  const handleRecord = () => {
     const rangeStart = endDate < startDate ? endDate : startDate;
     const rangeEnd = endDate < startDate ? startDate : endDate;
     for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
@@ -46,7 +62,7 @@ export default function RecordScreen() {
       updatePeriodDayEntry(day, {
         flow: flow || undefined,
         symptoms,
-        mood: mood || undefined,
+        mood,
         notes: notes.trim() || undefined,
       });
     }
@@ -57,8 +73,14 @@ export default function RecordScreen() {
   return (
     <ScreenContainer
       edges={['top', 'left', 'right', 'bottom']}
-      footer={<Button label="Save Record" onPress={handleSave} />}>
-      <ModalHeader title="Record Period" subtitle="Log the details for this cycle." />
+      footer={
+        <Button
+          label="Record"
+          icon={<Ionicons name="save-outline" size={16} color={Colors.textOnPrimary} />}
+          onPress={handleRecord}
+        />
+      }>
+      <ModalHeader title="Record Period" subtitle="Pick the dates, add details if you'd like, then Record." />
 
       <Card style={styles.card}>
         <DateStepper label="Start date" date={startDate} onChange={setStartDate} />
@@ -67,46 +89,22 @@ export default function RecordScreen() {
 
       <Card style={styles.card}>
         <AppText variant="bodyMedium" style={styles.label}>
-          Flow level
+          Flow level · optional
         </AppText>
-        <View style={styles.chipRow}>
-          {flowLevels.map((f) => (
-            <Chip key={f.key} label={f.label} selected={flow === f.key} color={f.color} onPress={() => setFlow(f.key)} />
-          ))}
-        </View>
+        <FlowLevelPicker value={flow} onChange={setFlow} />
       </Card>
 
       <Card style={styles.card}>
-        <AppText variant="bodyMedium" style={styles.label}>
-          Symptoms
-        </AppText>
-        <View style={styles.chipRow}>
-          {symptomOptions.map((s) => (
-            <Chip
-              key={s.key}
-              label={s.label}
-              icon={s.icon}
-              selected={symptoms.includes(s.key)}
-              onPress={() => toggleSymptom(s.key)}
-            />
-          ))}
-        </View>
+        <CollapsibleChipField label="Symptoms" options={symptomOptions} selectedKeys={symptoms} onToggle={toggleSymptom} />
       </Card>
 
       <Card style={styles.card}>
-        <AppText variant="bodyMedium" style={styles.label}>
-          Mood
-        </AppText>
-        <View style={styles.chipRow}>
-          {moodOptions.map((m) => (
-            <Chip key={m.key} label={m.label} icon={m.icon} selected={mood === m.key} onPress={() => setMood(m.key)} />
-          ))}
-        </View>
+        <CollapsibleChipField label="Mood" options={moodOptions} selectedKeys={mood} onToggle={toggleMood} />
       </Card>
 
       <Card style={[styles.card, styles.notesCard]}>
         <AppText variant="bodyMedium" style={styles.label}>
-          Notes
+          Notes · optional
         </AppText>
         <TextInput
           value={notes}
@@ -126,7 +124,6 @@ export default function RecordScreen() {
 const styles = StyleSheet.create({
   card: { marginBottom: Spacing.lg },
   label: { marginBottom: Spacing.md },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   notesCard: { paddingBottom: Spacing.lg },
   notesInput: {
     minHeight: 90,

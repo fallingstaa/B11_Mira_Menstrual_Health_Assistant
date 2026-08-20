@@ -16,4 +16,49 @@ module.exports = {
   MAX_MANUAL_PERIOD_LENGTH: 14,
   MIN_AGE: 9,
   MAX_AGE: 100,
+  // Final, locked list (2026-08-20) — mirrors mobile-app's symptomOptions in
+  // constants/mock-data.ts. These are the *keys* the app actually sends (kebab-case),
+  // not the display labels — e.g. "Mood swings" is sent/stored as "mood-swings". Update
+  // both places together if this list ever changes; previously these were free strings
+  // specifically because the option set wasn't finalized yet (see the comment this
+  // replaced on MenstrualRecord.js) — now that it is, both are enum-constrained.
+  SYMPTOM_OPTIONS: [
+    "everything-is-fine",
+    "cramps",
+    "tender-breasts",
+    "headache",
+    "acne",
+    "backache",
+    "fatigue",
+    "cravings",
+    "insomnia",
+    "abdominal-pain",
+    "vaginal-itching",
+    "vaginal-dryness",
+    "hot-flashes",
+    "night-sweats",
+    "joint-pain",
+    "brain-fog",
+    "dry-skin",
+    "dry-eyes",
+  ],
+  // Final, locked list (2026-08-20) — mirrors mobile-app's moodOptions in
+  // constants/mock-data.ts. Same key-not-label convention as SYMPTOM_OPTIONS above.
+  MOOD_OPTIONS: [
+    "calm",
+    "happy",
+    "energetic",
+    "frisky",
+    "mood-swings",
+    "irritated",
+    "sad",
+    "anxious",
+    "depressed",
+    "feeling-guilty",
+    "obsessive-thoughts",
+    "low-energy",
+    "apathetic",
+    "confused",
+    "very-self-critical",
+  ],
 };

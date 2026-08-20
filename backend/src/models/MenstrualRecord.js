@@ -1,12 +1,18 @@
 const mongoose = require("mongoose");
 
-const { MENSTRUAL_RECORD_SOURCES, MENSTRUAL_STATUS } = require("../utils/constants");
+const { MENSTRUAL_RECORD_SOURCES, MENSTRUAL_STATUS, SYMPTOM_OPTIONS, MOOD_OPTIONS } = require("../utils/constants");
 
 /**
  * One document per user per logged calendar day — matches the app's own
  * Record<dateKey, entry> shape in app-state.tsx, rather than one row per period
- * episode. flowLevel/mood are left as free strings (not enums) since those option
- * sets aren't finalized yet; tighten them once the UI's option lists are locked.
+ * episode. symptoms/mood are enum-constrained to SYMPTOM_OPTIONS/MOOD_OPTIONS (see
+ * utils/constants.js) now that the UI's option lists are finalized/locked — previously
+ * these were free strings while that list was still in flux. flowLevel stays a free
+ * string; its option set (spotting/light/medium/heavy) hasn't been through the same
+ * "final version" lock as symptoms/mood.
+ *
+ * mood is an array, not a single value — a day can be tagged with more than one mood
+ * at once (e.g. "Calm" and "Anxious" together), same multi-select shape as symptoms.
  */
 const menstrualRecordSchema = new mongoose.Schema(
   {
@@ -20,8 +26,8 @@ const menstrualRecordSchema = new mongoose.Schema(
 
     status: { type: String, enum: MENSTRUAL_STATUS, default: null },
     flowLevel: { type: String, default: null },
-    symptoms: { type: [String], default: [] },
-    mood: { type: String, default: null },
+    symptoms: { type: [{ type: String, enum: SYMPTOM_OPTIONS }], default: [] },
+    mood: { type: [{ type: String, enum: MOOD_OPTIONS }], default: [] },
     notes: { type: String, default: "", maxlength: 1000 },
 
     source: {

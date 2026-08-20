@@ -20,10 +20,22 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
 import { daysBetween, greeting } from '@/utils/date';
 
-function cyclePhase(day: number): string {
-  if (day <= 5) return 'Menstrual phase';
-  if (day <= 13) return 'Follicular phase';
-  if (day <= 16) return 'Ovulation phase';
+/**
+ * Which of the 4 phases `day` falls into — scaled to this user's own
+ * averageCycleLength/averagePeriodLength instead of assuming a fixed 28-day cycle for
+ * everyone. The old fixed thresholds (<=5/<=13/<=16) mislabeled longer/shorter cycles —
+ * e.g. Day 17 of a 35-day cycle read as "Luteal" even though ovulation (~day 21) hadn't
+ * happened yet. Mirrors backend/src/services/predictionService.js's cyclePhase() and
+ * prediction.tsx's buildPhases() — keep all three in sync if this formula changes.
+ */
+function cyclePhase(day: number, averageCycleLength = 28, averagePeriodLength = 5): string {
+  const periodLength = Math.max(1, averagePeriodLength);
+  const cycleLength = Math.max(20, averageCycleLength);
+  const estimatedOvulationDay = cycleLength - 14;
+
+  if (day <= periodLength) return 'Menstrual phase';
+  if (day < estimatedOvulationDay - 1) return 'Follicular phase';
+  if (day <= estimatedOvulationDay + 1) return 'Ovulation phase';
   return 'Luteal phase';
 }
 
@@ -74,7 +86,7 @@ export default function HomeScreen() {
               <View>
                 <AppText variant="h2">Hi, {mockUser.name}</AppText>
                 <AppText variant="small">
-                  Day {cycleStats.currentDay} · {cyclePhase(cycleStats.currentDay)}
+                  Day {cycleStats.currentDay} · {cyclePhase(cycleStats.currentDay, cycleStats.averageCycleLength, cycleStats.averagePeriodLength)}
                 </AppText>
               </View>
             </View>

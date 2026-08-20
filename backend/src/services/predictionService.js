@@ -23,11 +23,33 @@ function predictNextCycle({ lastPeriodStart, averageCycleLength, averagePeriodLe
   return { nextPeriodStart, nextPeriodEnd, fertileWindowStart, fertileWindowEnd };
 }
 
-/** Matches the cyclePhase() thresholds already used in home.tsx/prediction.tsx. */
-function cyclePhase(currentDay) {
-  if (currentDay <= 5) return "Menstrual phase";
-  if (currentDay <= 13) return "Follicular phase";
-  if (currentDay <= 16) return "Ovulation phase";
+/**
+ * Which of the 4 phases `currentCycleDay` falls into — scaled to *this* user's own
+ * averageCycleLength/averagePeriodLength instead of assuming a fixed 28-day cycle for
+ * everyone. The old fixed thresholds (<=5/<=13/<=16) mislabeled longer/shorter cycles —
+ * e.g. Day 17 of a 35-day cycle read as "Luteal" even though ovulation (~day 21) hadn't
+ * happened yet.
+ *
+ * - Menstrual: Day 1 through averagePeriodLength.
+ * - Ovulation: a 3-day window centered on the estimated ovulation day
+ *   (averageCycleLength - 14 — the same "~14 days before the next period" assumption
+ *   predictNextCycle() above uses for fertileWindowStart/End).
+ * - Follicular: everything between the end of Menstrual and the start of Ovulation.
+ * - Luteal: everything after Ovulation ends, through the end of the cycle.
+ *
+ * cycleLength is floored at 20 so a corrupt/unrealistic averageCycleLength can't push
+ * the ovulation window earlier than Menstrual ends. Matches the equivalent logic in
+ * mobile-app's home.tsx (cyclePhase) and prediction.tsx (buildPhases) — keep the three
+ * in sync if this formula changes.
+ */
+function cyclePhase(currentCycleDay, averageCycleLength = 28, averagePeriodLength = 5) {
+  const periodLength = Math.max(1, averagePeriodLength);
+  const cycleLength = Math.max(20, averageCycleLength);
+  const estimatedOvulationDay = cycleLength - 14;
+
+  if (currentCycleDay <= periodLength) return "Menstrual phase";
+  if (currentCycleDay < estimatedOvulationDay - 1) return "Follicular phase";
+  if (currentCycleDay <= estimatedOvulationDay + 1) return "Ovulation phase";
   return "Luteal phase";
 }
 

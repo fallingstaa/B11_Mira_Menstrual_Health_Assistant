@@ -35,7 +35,10 @@ process.on("uncaughtException", (error) => {
 // See config/cors.js — wide open in dev (Expo's origin varies), restricted to
 // ALLOWED_ORIGINS in production.
 app.use(cors(buildCorsOptions()));
-app.use(express.json());
+// Default 100kb is tight enough that a full 90-entry POST /api/menstrual/records/batch
+// (each entry with a max-length notes field + several symptoms) can exceed it — bumped
+// so that endpoint's documented cap is reliably true rather than an occasional 413.
+app.use(express.json({ limit: "1mb" }));
 // Whole-API floor against runaway loops/scripts — see middleware/rateLimiters.js.
 // authRoutes.js layers a tighter limit on top of this for register/login/forgot-password.
 app.use("/api", apiLimiter);

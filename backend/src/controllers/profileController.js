@@ -14,17 +14,24 @@ const getMe = asyncHandler(async (req, res) => {
     userId: u._id,
     name: u.profile.name,
     email: u.email,
+    age: u.profile.age,
     dateOfBirth: u.profile.dateOfBirth,
     preferredLanguage: u.profile.preferredLanguage,
     preferences: u.preferences,
+    // firstPeriodRecorded/firstQuestionAsked/isBeginner — lets a client that's just
+    // (re)signed in restore Home's "first-time" vs "returning" layout and the
+    // Getting-Started checklist without re-deriving them from scratch, the way
+    // app-state.tsx currently does client-side only (see its header comment).
+    onboarding: u.onboarding,
     cycle: u.cycle,
   });
 });
 
 const updateMe = asyncHandler(async (req, res) => {
-  const { name, dateOfBirth, preferredLanguage, preferences } = req.body;
+  const { name, age, dateOfBirth, preferredLanguage, preferences } = req.body;
 
   if (name !== undefined) req.user.profile.name = name;
+  if (age !== undefined) req.user.profile.age = age;
   if (dateOfBirth !== undefined) req.user.profile.dateOfBirth = dateOfBirth;
   if (preferredLanguage !== undefined) req.user.profile.preferredLanguage = preferredLanguage;
   if (preferences?.pushNotifications !== undefined) {
@@ -39,6 +46,7 @@ const updateMe = asyncHandler(async (req, res) => {
   return success(res, {
     userId: req.user._id,
     name: req.user.profile.name,
+    age: req.user.profile.age,
     dateOfBirth: req.user.profile.dateOfBirth,
     preferredLanguage: req.user.profile.preferredLanguage,
     preferences: req.user.preferences,
@@ -84,4 +92,48 @@ const deleteMe = asyncHandler(async (req, res) => {
   return successMessage(res, "User account and all associated personal data have been permanently deleted.");
 });
 
-module.exports = { getMe, updateMe, deleteMe };
+// Body validated by validate(pushTokenSchema) in profileRoutes.js. Storage only —
+// there's no FCM/Expo push *delivery* wired up yet (see reminderRoutes.js's "no push
+// delivery yet" note); this is the missing piece delivery would eventually read to
+// know which device to actually notify. Always overwrites rather than merging, since a
+// device only ever has one current token — the previous one (if any) is simply stale.
+const savePushToken = asyncHandler(async (req, res) => {
+  req.user.device.expoPushToken = req.body.expoPushToken;
+  req.user.device.pushTokenUpdatedAt = new Date();
+  await req.user.save();
+
+  return successMessage(res, "Push token saved.");
+});
+
+/**
+ * Full personal-data export: profile fields + every logged MenstrualRecord. Scoped to
+ * just those two, not AI chat history or reminders — DELETE /api/profile/me is the one
+ * that erases everything; this is "let me see/take my data", not "delete my data".
+ * Sent as a file download (Content-Disposition) rather than rendered inline, though the
+ * response body underneath is still the same {status,data} envelope as everywhere else.
+ */
+const exportData = asyncHandler(async (req, res) => {
+  const records = await MenstrualRecord.find({ userId: req.user._id }).sort({ date: 1 });
+
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    profile: {
+      userId: req.user._id,
+      name: req.user.profile.name,
+      email: req.user.email,
+      age: req.user.profile.age,
+      dateOfBirth: req.user.profile.dateOfBirth,
+      preferredLanguage: req.user.profile.preferredLanguage,
+      preferences: req.user.preferences,
+      onboarding: req.user.onboarding,
+      cycle: req.user.cycle,
+    },
+    menstrualRecords: records,
+  };
+
+  const filename = `mira-export-${new Date().toISOString().slice(0, 10)}.json`;
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  return success(res, payload);
+});
+
+module.exports = { getMe, updateMe, deleteMe, savePushToken, exportData };

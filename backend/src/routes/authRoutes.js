@@ -33,6 +33,11 @@ router.use(authLimiter);
  *               name:
  *                 type: string
  *                 example: Amara
+ *               age:
+ *                 type: integer
+ *                 minimum: 9
+ *                 maximum: 100
+ *                 description: Optional. Collected on register.tsx's own form (not deferred to period-setup).
  *     responses:
  *       201:
  *         description: User created.

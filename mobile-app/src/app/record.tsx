@@ -10,15 +10,19 @@ import { DateStepper } from '@/components/mira/date-stepper';
 import { ModalHeader } from '@/components/mira/modal-header';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { SuccessOverlay } from '@/components/mira/success-overlay';
-import { cycleStats, flowLevels, moodOptions, symptomOptions } from '@/constants/mock-data';
+import { flowLevels, moodOptions, symptomOptions } from '@/constants/mock-data';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { useAppState } from '@/context/app-state';
 
+/** Home's "Record Period" quick action (once a first period already exists) — logs a new cycle straight into shared state. */
 export default function RecordScreen() {
-  const [startDate, setStartDate] = useState(cycleStats.lastPeriodStart);
-  const [endDate, setEndDate] = useState(cycleStats.lastPeriodEnd);
-  const [flow, setFlow] = useState<string>('medium');
-  const [symptoms, setSymptoms] = useState<string[]>(['cramps']);
-  const [mood, setMood] = useState<string>('calm');
+  const { markPeriodDay, setPeriodEndDay, updatePeriodDayEntry } = useAppState();
+  const [today] = useState(() => new Date());
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
+  const [flow, setFlow] = useState('');
+  const [symptoms, setSymptoms] = useState<string[]>([]);
+  const [mood, setMood] = useState('');
   const [notes, setNotes] = useState('');
   const [saved, setSaved] = useState(false);
 
@@ -32,10 +36,28 @@ export default function RecordScreen() {
     return () => clearTimeout(t);
   }, [saved]);
 
+  // Tolerate the two dates being picked/stepped out of order — the earlier one is always the start.
+  const handleSave = () => {
+    const rangeStart = endDate < startDate ? endDate : startDate;
+    const rangeEnd = endDate < startDate ? startDate : endDate;
+    for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+      const day = new Date(d);
+      markPeriodDay(day);
+      updatePeriodDayEntry(day, {
+        flow: flow || undefined,
+        symptoms,
+        mood: mood || undefined,
+        notes: notes.trim() || undefined,
+      });
+    }
+    setPeriodEndDay(rangeEnd);
+    setSaved(true);
+  };
+
   return (
     <ScreenContainer
       edges={['top', 'left', 'right', 'bottom']}
-      footer={<Button label="Save Record" onPress={() => setSaved(true)} />}>
+      footer={<Button label="Save Record" onPress={handleSave} />}>
       <ModalHeader title="Record Period" subtitle="Log the details for this cycle." />
 
       <Card style={styles.card}>

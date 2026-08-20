@@ -9,8 +9,10 @@ import { Chip } from '@/components/mira/chip';
 import { ModalHeader } from '@/components/mira/modal-header';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { SuccessOverlay } from '@/components/mira/success-overlay';
-import { flowLevels, symptomOptions } from '@/constants/mock-data';
+import { flowLevels, moodOptions, symptomOptions } from '@/constants/mock-data';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { useAppState } from '@/context/app-state';
+import { dateKey, formatShort } from '@/utils/date';
 
 const statuses = [
   { key: 'on', label: 'On my period' },
@@ -18,11 +20,17 @@ const statuses = [
   { key: 'off', label: 'Not on my period' },
 ];
 
+/** Home's "Check in now" — logs today straight into shared state, pre-filled if today was already touched elsewhere. */
 export default function CheckinScreen() {
+  const { periodEntries, markPeriodDay, togglePeriodDay, updatePeriodDayEntry } = useAppState();
+  const [today] = useState(() => new Date());
+  const existingEntry = periodEntries[dateKey(today)];
+
   const [status, setStatus] = useState('on');
-  const [flow, setFlow] = useState('medium');
-  const [symptoms, setSymptoms] = useState<string[]>([]);
-  const [notes, setNotes] = useState('');
+  const [flow, setFlow] = useState(existingEntry?.flow ?? 'medium');
+  const [symptoms, setSymptoms] = useState<string[]>(existingEntry?.symptoms ?? []);
+  const [mood, setMood] = useState(existingEntry?.mood ?? '');
+  const [notes, setNotes] = useState(existingEntry?.notes ?? '');
   const [saved, setSaved] = useState(false);
 
   const toggleSymptom = (key: string) => {
@@ -35,11 +43,27 @@ export default function CheckinScreen() {
     return () => clearTimeout(t);
   }, [saved]);
 
+  const handleSave = () => {
+    if (status === 'off') {
+      // Not on a period today — clear today's entry if one existed, but don't invent one.
+      if (existingEntry) togglePeriodDay(today);
+    } else {
+      markPeriodDay(today);
+      updatePeriodDayEntry(today, {
+        flow,
+        symptoms,
+        mood: mood || undefined,
+        notes: notes.trim() || undefined,
+      });
+    }
+    setSaved(true);
+  };
+
   return (
     <ScreenContainer
       edges={['top', 'left', 'right', 'bottom']}
-      footer={<Button label="Save Check-in" onPress={() => setSaved(true)} />}>
-      <ModalHeader title="Daily Check-in" subtitle="Today, Aug 10 · takes a few seconds" />
+      footer={<Button label="Save Check-in" onPress={handleSave} />}>
+      <ModalHeader title="Daily Check-in" subtitle={`Today, ${formatShort(today)} · takes a few seconds`} />
 
       <Card style={styles.card}>
         <AppText variant="bodyMedium" style={styles.label}>
@@ -78,6 +102,17 @@ export default function CheckinScreen() {
               selected={symptoms.includes(s.key)}
               onPress={() => toggleSymptom(s.key)}
             />
+          ))}
+        </View>
+      </Card>
+
+      <Card style={styles.card}>
+        <AppText variant="bodyMedium" style={styles.label}>
+          Mood today?
+        </AppText>
+        <View style={styles.chipRow}>
+          {moodOptions.map((m) => (
+            <Chip key={m.key} label={m.label} icon={m.icon} selected={mood === m.key} onPress={() => setMood(m.key)} />
           ))}
         </View>
       </Card>

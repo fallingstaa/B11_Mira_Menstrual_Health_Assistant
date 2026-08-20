@@ -1,18 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { Modal, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { AppText } from '@/components/mira/app-text';
 import { Button } from '@/components/mira/button';
 import { Card } from '@/components/mira/card';
+import { CycleLengthAnswer, CycleLengthQuestion, DEFAULT_CYCLE_LENGTH } from '@/components/mira/cycle-length-question';
 import { PeriodDayEditor } from '@/components/mira/period-day-editor';
 import { PeriodEntriesSummary } from '@/components/mira/period-entries-summary';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { ScreenHeader } from '@/components/mira/screen-header';
 import { SuccessOverlay } from '@/components/mira/success-overlay';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Colors, Radius, Shadow, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
 import { dateKey, formatShort, getMonthGrid, isSameDay, monthLabel, WEEKDAY_LABELS } from '@/utils/date';
 
@@ -24,13 +25,21 @@ import { dateKey, formatShort, getMonthGrid, isSameDay, monthLabel, WEEKDAY_LABE
  * is the end date).
  */
 export default function RecordFirstPeriodScreen() {
-  const { periodEntries, togglePeriodDay, setPeriodEndDay, updatePeriodDayEntry } = useAppState();
+  const { periodEntries, togglePeriodDay, setPeriodEndDay, updatePeriodDayEntry, setAverageCycleLength } =
+    useAppState();
   // The real device date, not the app's fixed demo date — so this screen reflects "today" whenever it's actually opened.
   const [today] = useState(() => new Date());
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [activeDay, setActiveDay] = useState(today);
   const [saved, setSaved] = useState(false);
   const [successMessage, setSuccessMessage] = useState('Period recorded!');
+  const [knowsCycleLength, setKnowsCycleLength] = useState<CycleLengthAnswer>(null);
+  const [cycleLength, setCycleLength] = useState(DEFAULT_CYCLE_LENGTH);
+  // Shown immediately on entering this screen from "I'm on my period right now" — a single quick
+  // question, gone the moment it's answered or skipped. The calendar underneath (tap days to
+  // mark them, same as always) is what actually records anything — this popup only ever touches
+  // the cycle length input, never a date.
+  const [showCycleLengthPopup, setShowCycleLengthPopup] = useState(true);
 
   const grid = useMemo(() => getMonthGrid(cursor.getFullYear(), cursor.getMonth()), [cursor]);
   const markedCount = Object.keys(periodEntries).length;
@@ -74,6 +83,21 @@ export default function RecordFirstPeriodScreen() {
   const finish = (message: string) => {
     setSuccessMessage(message);
     setSaved(true);
+  };
+
+  /**
+   * Closes the cycle-length popup. "Skip" leaves averageCycleLength untouched (the 28-day
+   * default, unless real history has already overridden it) without even looking at whatever
+   * was selected; "Save" applies the answer if one was actually given. Either way this is the
+   * whole interaction — closing it hands off straight to the calendar below, tap-to-record as
+   * usual. Applying a length instantly updates nextPeriodStartDate on Home and the on-device
+   * reminder schedule — see context/app-state.tsx.
+   */
+  const closeCycleLengthPopup = (apply: boolean) => {
+    if (apply && knowsCycleLength) {
+      setAverageCycleLength(knowsCycleLength === 'yes' ? cycleLength : DEFAULT_CYCLE_LENGTH);
+    }
+    setShowCycleLengthPopup(false);
   };
 
   /** Footer "Mark as End": uses whichever day is already flagged as the end, otherwise flags the active/latest one. */
@@ -212,6 +236,36 @@ export default function RecordFirstPeriodScreen() {
       />
 
       {saved && <SuccessOverlay message={successMessage} />}
+
+      <Modal
+        visible={showCycleLengthPopup}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => closeCycleLengthPopup(true)}>
+        <View style={styles.popupOverlay}>
+          <View style={[styles.popupSheet, Shadow.raised]}>
+            <View style={styles.popupHandle} />
+            <View style={styles.popupHeaderRow}>
+              <AppText variant="h2">Cycle Length</AppText>
+              <Pressable onPress={() => closeCycleLengthPopup(false)} hitSlop={8}>
+                <AppText variant="bodyMedium" color={Colors.textMuted}>
+                  Skip
+                </AppText>
+              </Pressable>
+            </View>
+
+            <CycleLengthQuestion
+              answer={knowsCycleLength}
+              onAnswerChange={setKnowsCycleLength}
+              cycleLength={cycleLength}
+              onCycleLengthChange={setCycleLength}
+            />
+
+            <Button label="Save & Continue" onPress={() => closeCycleLengthPopup(true)} style={styles.popupButton} />
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -294,4 +348,27 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', gap: Spacing.md },
   footerButton: { flex: 1 },
   footerCaption: { marginTop: Spacing.sm },
+  popupOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: Colors.overlay },
+  popupSheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    padding: Spacing.xl,
+    paddingBottom: Spacing.xxxl,
+  },
+  popupHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: 'center',
+    marginBottom: Spacing.lg,
+  },
+  popupHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.xl,
+  },
+  popupButton: { marginTop: Spacing.md },
 });

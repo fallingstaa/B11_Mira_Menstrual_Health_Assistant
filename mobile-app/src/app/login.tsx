@@ -37,6 +37,8 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(email.trim(), password);
+      // Cycle Basics 101 only auto-shows on brand-new sign-up (register.tsx) — a returning user
+      // logging in goes straight to Home, and can reopen the guide any time from there.
       router.replace('/(tabs)/home');
     } catch (err) {
       setError(loginErrorMessage(err));

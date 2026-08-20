@@ -10,7 +10,11 @@ import { ScreenContainer } from '@/components/mira/screen-container';
 import { SocialButton } from '@/components/mira/social-button';
 import { TextField } from '@/components/mira/text-field';
 import { Colors, Spacing } from '@/constants/theme';
+import { useAppState } from '@/context/app-state';
 import { useAuth } from '@/context/auth-context';
+
+const MIN_AGE = 9;
+const MAX_AGE = 100;
 
 function registerErrorMessage(err: unknown): string {
   const code = (err as { code?: string })?.code;
@@ -22,7 +26,9 @@ function registerErrorMessage(err: unknown): string {
 
 export default function RegisterScreen() {
   const { register } = useAuth();
+  const { setUserAge } = useAppState();
   const [name, setName] = useState('');
+  const [age, setAge] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -30,8 +36,13 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!name.trim() || !email.trim() || !password) {
+    if (!name.trim() || !age.trim() || !email.trim() || !password) {
       setError('Please fill in all fields.');
+      return;
+    }
+    const parsedAge = parseInt(age, 10);
+    if (Number.isNaN(parsedAge) || parsedAge < MIN_AGE || parsedAge > MAX_AGE) {
+      setError(`Please enter a valid age between ${MIN_AGE} and ${MAX_AGE}.`);
       return;
     }
     if (password.length < 8) {
@@ -47,7 +58,10 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await register(name.trim(), email.trim(), password);
-      router.replace('/(tabs)/home');
+      setUserAge(parsedAge);
+      // Every brand-new sign-up sees Cycle Basics 101 before anything else. Returning users
+      // (login.tsx) skip straight to Home, but can reopen the same guide any time from there.
+      router.replace('/cycle-basics');
     } catch (err) {
       setError(registerErrorMessage(err));
     } finally {
@@ -69,6 +83,15 @@ export default function RegisterScreen() {
 
       <Animated.View entering={FadeInUp.duration(450).delay(120)}>
         <TextField label="Name" icon="person-outline" placeholder="What should we call you?" value={name} onChangeText={setName} />
+        <TextField
+          label="Age"
+          icon="gift-outline"
+          placeholder="How old are you?"
+          keyboardType="number-pad"
+          maxLength={3}
+          value={age}
+          onChangeText={(text) => setAge(text.replace(/[^0-9]/g, ''))}
+        />
         <TextField
           label="Email"
           icon="mail-outline"

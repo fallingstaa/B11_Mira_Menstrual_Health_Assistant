@@ -15,10 +15,10 @@ import { MascotMini } from '@/components/mira/mascot';
 import { QuickAction } from '@/components/mira/quick-action';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { SectionHeader } from '@/components/mira/section-header';
-import { articles, cycleStats, healthTips, mockUser, notifications, today } from '@/constants/mock-data';
+import { articles, cycleStats, healthTips, mockUser, notifications } from '@/constants/mock-data';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
-import { daysBetween, formatRange, greeting } from '@/utils/date';
+import { daysBetween, greeting } from '@/utils/date';
 
 function cyclePhase(day: number): string {
   if (day <= 5) return 'Menstrual phase';
@@ -27,10 +27,18 @@ function cyclePhase(day: number): string {
   return 'Luteal phase';
 }
 
+/** "In 5 days" / "Today" / "2 days late" — the ONLY thing shown for the prediction, per spec (no date range). */
+function relativePeriodText(nextPeriodStartDate: Date): string {
+  const remaining = daysBetween(new Date(), nextPeriodStartDate);
+  if (remaining === 0) return 'Today';
+  if (remaining > 0) return `In ${remaining} day${remaining === 1 ? '' : 's'}`;
+  const daysLate = Math.abs(remaining);
+  return `${daysLate} day${daysLate === 1 ? '' : 's'} late`;
+}
+
 export default function HomeScreen() {
-  const { firstPeriodRecorded, firstQuestionAsked } = useAppState();
+  const { firstPeriodRecorded, firstQuestionAsked, nextPeriodStartDate } = useAppState();
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const daysUntilNext = daysBetween(today, cycleStats.nextPeriodStart);
   const onboardingDone = firstPeriodRecorded && firstQuestionAsked;
 
   const steps: GettingStartedStep[] = [
@@ -94,8 +102,9 @@ export default function HomeScreen() {
                   <AppText variant="small" color="rgba(255,255,255,0.85)">
                     Next period estimated
                   </AppText>
+                  {/* Instant, on-device prediction (lastPeriodStartDate + averageCycleLength) — relative days only, no date range. */}
                   <AppText variant="h3" color={Colors.textOnPrimary} style={{ marginTop: 2 }}>
-                    {formatRange(cycleStats.nextPeriodStart, cycleStats.nextPeriodEnd)} · in {daysUntilNext} days
+                    {nextPeriodStartDate ? relativePeriodText(nextPeriodStartDate) : '—'}
                   </AppText>
                 </View>
                 <Pressable style={styles.heroCta} onPress={() => router.push('/prediction')}>
@@ -150,6 +159,8 @@ export default function HomeScreen() {
         </Card>
       )}
 
+      <CycleBasicsBanner />
+
       <View style={styles.section}>
         <SectionHeader title="Quick actions" />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickActionsRow}>
@@ -198,7 +209,7 @@ export default function HomeScreen() {
           <Button
             label="Check in now"
             variant="secondary"
-            onPress={() => router.push('/(tabs)/calendar')}
+            onPress={() => router.push('/checkin')}
             style={styles.checkinButton}
           />
 
@@ -211,6 +222,38 @@ export default function HomeScreen() {
         </>
       )}
     </ScreenContainer>
+  );
+}
+
+/**
+ * High-visibility entry point into the "Cycle Basics 101" guide — pinned near the top of the
+ * feed (not tucked into Quick Actions) so it's noticed rather than found. Always available,
+ * regardless of firstPeriodRecorded, so both a brand-new user who skipped the auto-shown guide
+ * and a returning one can reopen it any time. Opens as a modal, so Home stays right where it is.
+ */
+function CycleBasicsBanner() {
+  return (
+    <Pressable onPress={() => router.push({ pathname: '/cycle-basics', params: { mode: 'review' } })}>
+      <Card style={styles.basicsBanner} delay={20}>
+        <View style={styles.basicsHeaderRow}>
+          <IconCircle color={Colors.surface} size={44}>
+            <Ionicons name="school" size={20} color={Colors.warning} />
+          </IconCircle>
+          <View style={{ flex: 1 }}>
+            <AppText variant="h3">Cycle Basics 101</AppText>
+            <AppText variant="small" color={Colors.textSecondary} style={{ marginTop: 2 }}>
+              Periods vs. cycles, explained in under 2 minutes
+            </AppText>
+          </View>
+        </View>
+        <View style={styles.basicsPill}>
+          <AppText variant="small" color={Colors.textOnPrimary}>
+            Tap to learn
+          </AppText>
+          <Ionicons name="arrow-forward" size={12} color={Colors.textOnPrimary} />
+        </View>
+      </Card>
+    </Pressable>
   );
 }
 
@@ -297,6 +340,19 @@ const styles = StyleSheet.create({
   welcomeHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.xl },
   welcomeParagraph: { marginTop: Spacing.sm, lineHeight: 20, marginBottom: Spacing.lg },
   welcomeCta: { backgroundColor: Colors.textOnPrimary },
+  basicsBanner: { backgroundColor: Colors.warningTint, marginBottom: Spacing.xl, gap: Spacing.md },
+  basicsHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  basicsPill: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.warning,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs + 2,
+    marginLeft: 44 + Spacing.md,
+  },
   section: { marginBottom: Spacing.xxl },
   quickActionsRow: { gap: Spacing.md, paddingRight: Spacing.md },
   tipsRow: { flexDirection: 'row', gap: Spacing.md },

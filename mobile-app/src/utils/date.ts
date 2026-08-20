@@ -22,6 +22,13 @@ export function formatRange(start: Date, end: Date): string {
   return `${formatShort(start)} – ${formatShort(end)}`;
 }
 
+/** A new Date `days` calendar days after `date` (negative goes backward). Never mutates `date`. */
+export function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
 export function daysBetween(a: Date, b: Date): number {
   const msPerDay = 1000 * 60 * 60 * 24;
   const utcA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());

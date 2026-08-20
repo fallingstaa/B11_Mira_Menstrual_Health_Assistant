@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { DevNotificationTester } from '@/components/DevNotificationTester';
 import { Colors, FontsToLoad } from '@/constants/theme';
 import { AppStateProvider } from '@/context/app-state';
 import { AuthProvider } from '@/context/auth-context';
@@ -40,6 +41,7 @@ export default function RootLayout() {
               <Stack.Screen name="onboarding" />
               <Stack.Screen name="login" options={{ animation: 'fade' }} />
               <Stack.Screen name="register" />
+              <Stack.Screen name="cycle-basics" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="forgot-password" />
               <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
               <Stack.Screen name="record" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
@@ -49,6 +51,7 @@ export default function RootLayout() {
               <Stack.Screen name="notifications" />
               <Stack.Screen name="article/[id]" />
             </Stack>
+            <DevNotificationTester />
           </AppStateProvider>
         </AuthProvider>
       </SafeAreaProvider>

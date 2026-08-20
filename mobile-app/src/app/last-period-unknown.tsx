@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/mira/app-text';
@@ -7,6 +8,7 @@ import { Button } from '@/components/mira/button';
 import { Mascot } from '@/components/mira/mascot';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { useAppState } from '@/context/app-state';
 
 // Same icons as Home's Quick Actions, for consistency.
 const links: { key: string; icon: keyof typeof Ionicons.glyphMap; label: string; href: '/(tabs)/education' | '/(tabs)/assistant' | '/notifications' }[] = [
@@ -15,8 +17,22 @@ const links: { key: string; icon: keyof typeof Ionicons.glyphMap; label: string;
   { key: 'reminders', icon: 'alarm', label: 'Set Up Reminders', href: '/notifications' },
 ];
 
-/** "I don't remember": no data to save — just reassure the user and point them somewhere useful while they wait. */
+/**
+ * Path C of the setup flow: "first period ever" / "I don't know any dates". No dates to save,
+ * so instead this flags the user as a beginner and locks in the 28-day default cycle length —
+ * enough for prediction logic to run on later — then reassures them and points somewhere useful
+ * while they wait, without ever treating the missing dates as an error.
+ */
 export default function LastPeriodUnknownScreen() {
+  const { setIsBeginner, setAverageCycleLength } = useAppState();
+
+  useEffect(() => {
+    setIsBeginner(true);
+    setAverageCycleLength(28);
+    // Run once on mount — this screen only ever means one thing: no known dates yet.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <ScreenContainer edges={['top', 'left', 'right', 'bottom']} contentStyle={styles.content}>
       <View style={styles.mascotWrap}>

@@ -74,6 +74,12 @@ const swaggerDefinition = {
           nextPeriodEnd: { type: "string", format: "date", nullable: true },
           fertileWindowStart: { type: "string", format: "date", nullable: true },
           fertileWindowEnd: { type: "string", format: "date", nullable: true },
+          manualCycleLength: {
+            type: "integer",
+            nullable: true,
+            description: "Onboarding's own answer, if given — see PUT /api/menstrual/cycle-setup. Only used as a fallback while averageCycleLength above can't yet be computed from real history.",
+          },
+          manualPeriodLength: { type: "integer", nullable: true, description: "Same idea as manualCycleLength, for averagePeriodLength." },
         },
       },
       RegisterResponse: {
@@ -81,6 +87,7 @@ const swaggerDefinition = {
         properties: {
           userId: { type: "string" },
           name: { type: "string" },
+          age: { type: "integer", nullable: true },
           email: { type: "string", format: "email" },
           createdAt: { type: "string", format: "date-time" },
         },
@@ -96,6 +103,7 @@ const swaggerDefinition = {
             properties: {
               firstPeriodRecorded: { type: "boolean" },
               firstQuestionAsked: { type: "boolean" },
+              isBeginner: { type: "boolean" },
             },
           },
         },
@@ -106,9 +114,18 @@ const swaggerDefinition = {
           userId: { type: "string" },
           name: { type: "string" },
           email: { type: "string", format: "email" },
+          age: { type: "integer", nullable: true },
           dateOfBirth: { type: "string", format: "date", nullable: true },
           preferredLanguage: { type: "string", example: "English" },
           preferences: { $ref: "#/components/schemas/Preferences" },
+          onboarding: {
+            type: "object",
+            properties: {
+              firstPeriodRecorded: { type: "boolean" },
+              firstQuestionAsked: { type: "boolean" },
+              isBeginner: { type: "boolean" },
+            },
+          },
           cycle: { $ref: "#/components/schemas/CycleCache" },
         },
       },
@@ -116,6 +133,7 @@ const swaggerDefinition = {
         type: "object",
         properties: {
           name: { type: "string" },
+          age: { type: "integer", minimum: 9, maximum: 100 },
           dateOfBirth: { type: "string", format: "date" },
           preferredLanguage: { type: "string" },
           preferences: { $ref: "#/components/schemas/Preferences" },
@@ -126,6 +144,7 @@ const swaggerDefinition = {
         properties: {
           userId: { type: "string" },
           name: { type: "string" },
+          age: { type: "integer", nullable: true },
           dateOfBirth: { type: "string", format: "date", nullable: true },
           preferredLanguage: { type: "string" },
           preferences: { $ref: "#/components/schemas/Preferences" },
@@ -161,7 +180,7 @@ const swaggerDefinition = {
           symptoms: { type: "array", items: { type: "string" }, example: ["cramps", "headache"] },
           mood: { type: "string", nullable: true, example: "calm" },
           notes: { type: "string", example: "Felt tired today" },
-          source: { type: "string", enum: ["calendar", "checkin", "record", "last_period_setup"] },
+          source: { type: "string", enum: ["calendar", "checkin", "record", "record_first_period", "last_period_one_date"] },
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" },
         },
@@ -178,7 +197,7 @@ const swaggerDefinition = {
           symptoms: { type: "array", items: { type: "string" } },
           mood: { type: "string", example: "calm" },
           notes: { type: "string" },
-          source: { type: "string", enum: ["calendar", "checkin", "record", "last_period_setup"] },
+          source: { type: "string", enum: ["calendar", "checkin", "record", "record_first_period", "last_period_one_date"] },
         },
       },
       AskRequest: {

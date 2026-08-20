@@ -17,7 +17,7 @@ async function verifyToken(idToken) {
 // Body shape is already validated by the `validate` middleware in authRoutes.js (see
 // validators/authValidators.js) before this controller ever runs.
 const register = asyncHandler(async (req, res) => {
-  const { idToken, name } = req.body;
+  const { idToken, name, age } = req.body;
 
   const decoded = await verifyToken(idToken);
 
@@ -29,7 +29,7 @@ const register = asyncHandler(async (req, res) => {
   const user = await User.create({
     firebaseUid: decoded.uid,
     email: decoded.email,
-    profile: { name },
+    profile: { name, age: age ?? null },
   });
 
   return success(
@@ -37,6 +37,7 @@ const register = asyncHandler(async (req, res) => {
     {
       userId: user._id,
       name: user.profile.name,
+      age: user.profile.age,
       email: user.email,
       createdAt: user.createdAt,
     },

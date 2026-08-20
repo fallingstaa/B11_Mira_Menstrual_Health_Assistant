@@ -1,9 +1,9 @@
 const express = require("express");
 
 const authMiddleware = require("../middleware/authMiddleware");
-const { getMe, updateMe, deleteMe } = require("../controllers/profileController");
+const { getMe, updateMe, deleteMe, savePushToken, exportData } = require("../controllers/profileController");
 const validate = require("../middleware/validate");
-const { updateProfileSchema } = require("../validators/profileValidators");
+const { updateProfileSchema, pushTokenSchema } = require("../validators/profileValidators");
 
 const router = express.Router();
 
@@ -81,5 +81,68 @@ router.put("/me", validate(updateProfileSchema), updateMe);
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.delete("/me", deleteMe);
+
+/**
+ * @openapi
+ * /api/profile/push-token:
+ *   post:
+ *     tags: [Profile]
+ *     summary: Save/update this device's Expo push token
+ *     description: >
+ *       Storage only — there's no FCM/Expo push *delivery* wired up yet (see the Reminders endpoints' description
+ *       for that gap). Always overwrites any previously saved token, since a device only ever has one current one.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [expoPushToken]
+ *             properties:
+ *               expoPushToken: { type: string, example: "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]" }
+ *     responses:
+ *       200:
+ *         description: Saved.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/MessageResponse' } } }
+ *       400:
+ *         description: expoPushToken missing or not in the expected Expo format.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.post("/push-token", validate(pushTokenSchema), savePushToken);
+
+/**
+ * @openapi
+ * /api/profile/export:
+ *   get:
+ *     tags: [Profile]
+ *     summary: Export all personal data as a downloadable JSON file
+ *     description: >
+ *       Profile fields (name/age/DOB/language/preferences/onboarding/cycle cache) plus every logged
+ *       `MenstrualRecord`, sorted ascending by date. Sent with `Content-Disposition: attachment` so a browser or
+ *       Postman saves it as a file instead of rendering it inline. Does not include AI conversation history or
+ *       reminders — see `DELETE /api/profile/me` for full account deletion, which does erase those too.
+ *     responses:
+ *       200:
+ *         description: The export payload.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string, example: success }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     exportedAt: { type: string, format: date-time }
+ *                     profile: { type: object }
+ *                     menstrualRecords:
+ *                       type: array
+ *                       items: { $ref: '#/components/schemas/MenstrualRecord' }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.get("/export", exportData);
 
 module.exports = router;

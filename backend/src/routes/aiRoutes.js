@@ -1,7 +1,7 @@
 const express = require("express");
 
 const authMiddleware = require("../middleware/authMiddleware");
-const { ask, getConversation } = require("../controllers/aiController");
+const { ask, getConversation, clearConversation } = require("../controllers/aiController");
 
 const router = express.Router();
 
@@ -64,5 +64,24 @@ router.post("/ask", ask);
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.get("/conversation", getConversation);
+
+/**
+ * @openapi
+ * /api/ai/conversation:
+ *   delete:
+ *     tags: [AI Assistant]
+ *     summary: Clear conversation history
+ *     description: >
+ *       Permanently deletes every past Q&A turn for the signed-in user. Cannot be undone. Does not affect
+ *       `onboarding.firstQuestionAsked` — that flag tracks whether the Getting-Started checklist item was ever
+ *       completed, not whether history is currently empty.
+ *     responses:
+ *       200:
+ *         description: History cleared.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/MessageResponse' } } }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.delete("/conversation", clearConversation);
 
 module.exports = router;

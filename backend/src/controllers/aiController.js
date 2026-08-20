@@ -1,5 +1,5 @@
 const AIConversation = require("../models/AIConversation");
-const { success, error } = require("../utils/responseHandler");
+const { success, successMessage, error } = require("../utils/responseHandler");
 const asyncHandler = require("../utils/asyncHandler");
 const { retrieveContext } = require("../services/ragService");
 const { generateReply } = require("../services/geminiService");
@@ -46,4 +46,12 @@ const getConversation = asyncHandler(async (req, res) => {
   return success(res, turns);
 });
 
-module.exports = { ask, getConversation };
+// Note: this does NOT reset onboarding.firstQuestionAsked — that flag tracks whether
+// the Getting-Started checklist item has ever been completed, not whether history is
+// currently empty, so clearing history shouldn't make it reappear as an unfinished step.
+const clearConversation = asyncHandler(async (req, res) => {
+  await AIConversation.deleteMany({ userId: req.user._id });
+  return successMessage(res, "Conversation history cleared.");
+});
+
+module.exports = { ask, getConversation, clearConversation };

@@ -13,7 +13,7 @@ import { daysBetween, formatRange, formatShort } from '@/utils/date';
 
 type PhaseKey = 'menstrual' | 'follicular' | 'ovulation' | 'luteal';
 
-const PHASES: {
+type PhaseInfo = {
   key: PhaseKey;
   label: string;
   sublabel: string;
@@ -24,65 +24,104 @@ const PHASES: {
   icon: keyof typeof Ionicons.glyphMap;
   momentum: string;
   description: string;
-}[] = [
-  {
-    key: 'menstrual',
-    label: 'Menstrual',
-    sublabel: 'Period',
-    start: 1,
-    end: cycleStats.averagePeriodLength,
-    color: Colors.primary,
-    tint: Colors.tint50,
-    icon: 'water',
-    momentum: 'Take it easy',
-    description: 'Your body is shedding the uterine lining. Cramps and fatigue are common — rest and stay hydrated.',
-  },
-  {
-    key: 'follicular',
-    label: 'Follicular',
-    sublabel: 'Pre-ovulation',
-    start: cycleStats.averagePeriodLength + 1,
-    end: 13,
-    color: Colors.warning,
-    tint: Colors.warningTint,
-    icon: 'star',
-    momentum: 'Energy is increasing',
-    description:
-      'Your estrogen is rising, and you may feel more energetic and social. A great time for exercise and creativity!',
-  },
-  {
-    key: 'ovulation',
-    label: 'Ovulation',
-    sublabel: 'Peak fertility',
-    start: 14,
-    end: 16,
-    color: Colors.success,
-    tint: Colors.successTint,
-    icon: 'sunny',
-    momentum: 'Energy peaking',
-    description: "You're at your most fertile. Some people notice a boost in confidence, energy, and libido around this time.",
-  },
-  {
-    key: 'luteal',
-    label: 'Luteal',
-    sublabel: 'Post-ovulation',
-    start: 17,
-    end: cycleStats.averageCycleLength,
-    color: Colors.lavender,
-    tint: Colors.lavenderTint,
-    icon: 'moon',
-    momentum: 'Energy winding down',
-    description: 'Progesterone rises then falls. Cravings, mood swings, or fatigue are common as your next period approaches.',
-  },
-];
+};
 
-function currentPhase(day: number) {
-  return PHASES.find((p) => day <= p.end) ?? PHASES[PHASES.length - 1];
+/**
+ * Computes the 4 phases' day-ranges from *this* user's own averageCycleLength/
+ * averagePeriodLength, instead of the fixed 28-day-cycle boundaries (Menstrual
+ * end-of-period, Follicular through 13, Ovulation 14-16, Luteal 17+) this screen used
+ * to hardcode for everyone. Mirrors backend/src/services/predictionService.js's
+ * cyclePhase() and home.tsx's cyclePhase() — keep all three in sync if this changes.
+ *
+ * - Menstrual: Day 1 through averagePeriodLength.
+ * - Ovulation: a 3-day window centered on the estimated ovulation day
+ *   (averageCycleLength - 14 — the same "~14 days before the next period" assumption
+ *   the prediction math uses for the fertile window).
+ * - Follicular: everything between Menstrual's end and Ovulation's start.
+ * - Luteal: everything after Ovulation, through the end of the cycle.
+ *
+ * Every boundary is clamped to stay >= the one before it, so an unusual combination
+ * (e.g. a very short cycle with a long period) collapses a phase to zero days instead
+ * of rendering an inverted/negative-width range — buildPhases filters those out below.
+ */
+function buildPhases(averageCycleLength: number, averagePeriodLength: number): PhaseInfo[] {
+  const periodLength = Math.max(1, averagePeriodLength);
+  const cycleLength = Math.max(20, averageCycleLength);
+  const estimatedOvulationDay = cycleLength - 14;
+
+  const menstrualEnd = periodLength;
+  const follicularStart = menstrualEnd + 1;
+  const ovulationStart = Math.max(follicularStart, estimatedOvulationDay - 1);
+  const follicularEnd = ovulationStart - 1;
+  const ovulationEnd = Math.max(ovulationStart, estimatedOvulationDay + 1);
+  const lutealStart = ovulationEnd + 1;
+  const lutealEnd = Math.max(lutealStart, cycleLength);
+
+  const phases: PhaseInfo[] = [
+    {
+      key: 'menstrual',
+      label: 'Menstrual',
+      sublabel: 'Period',
+      start: 1,
+      end: menstrualEnd,
+      color: Colors.primary,
+      tint: Colors.tint50,
+      icon: 'water',
+      momentum: 'Take it easy',
+      description: 'Your body is shedding the uterine lining. Cramps and fatigue are common — rest and stay hydrated.',
+    },
+    {
+      key: 'follicular',
+      label: 'Follicular',
+      sublabel: 'Pre-ovulation',
+      start: follicularStart,
+      end: follicularEnd,
+      color: Colors.warning,
+      tint: Colors.warningTint,
+      icon: 'star',
+      momentum: 'Energy is increasing',
+      description:
+        'Your estrogen is rising, and you may feel more energetic and social. A great time for exercise and creativity!',
+    },
+    {
+      key: 'ovulation',
+      label: 'Ovulation',
+      sublabel: 'Peak fertility',
+      start: ovulationStart,
+      end: ovulationEnd,
+      color: Colors.success,
+      tint: Colors.successTint,
+      icon: 'sunny',
+      momentum: 'Energy peaking',
+      description: "You're at your most fertile. Some people notice a boost in confidence, energy, and libido around this time.",
+    },
+    {
+      key: 'luteal',
+      label: 'Luteal',
+      sublabel: 'Post-ovulation',
+      start: lutealStart,
+      end: lutealEnd,
+      color: Colors.lavender,
+      tint: Colors.lavenderTint,
+      icon: 'moon',
+      momentum: 'Energy winding down',
+      description: 'Progesterone rises then falls. Cravings, mood swings, or fatigue are common as your next period approaches.',
+    },
+  ];
+
+  // Drop any phase a tight/unusual combination of lengths squeezed down to 0 days —
+  // keeps the phase bar's flex widths and the legend from showing an inverted range.
+  return phases.filter((p) => p.end >= p.start);
+}
+
+function currentPhase(day: number, phases: PhaseInfo[]) {
+  return phases.find((p) => day <= p.end) ?? phases[phases.length - 1];
 }
 
 export default function PredictionScreen() {
   const daysUntilNext = daysBetween(today, cycleStats.nextPeriodStart);
-  const phase = currentPhase(cycleStats.currentDay);
+  const phases = buildPhases(cycleStats.averageCycleLength, cycleStats.averagePeriodLength);
+  const phase = currentPhase(cycleStats.currentDay, phases);
 
   const history = pastPeriods
     .map((p, i, arr) => ({ ...p, cycleLength: i > 0 ? daysBetween(arr[i - 1].start, p.start) : null }))
@@ -142,12 +181,12 @@ export default function PredictionScreen() {
           Cycle Phases
         </AppText>
         <View style={styles.phaseBar}>
-          {PHASES.map((p) => (
+          {phases.map((p) => (
             <View key={p.key} style={{ flex: p.end - p.start + 1, backgroundColor: p.color }} />
           ))}
         </View>
         <View style={styles.phaseLegend}>
-          {PHASES.map((p, i) => (
+          {phases.map((p, i) => (
             <View key={p.key} style={[styles.phaseRow, i !== 0 && styles.phaseRowBorder]}>
               <View style={[styles.phaseDot, { backgroundColor: p.color }]} />
               <View style={styles.phaseLabelRow}>

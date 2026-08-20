@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 
+const { MENSTRUAL_RECORD_SOURCES, MENSTRUAL_STATUS } = require("../utils/constants");
+
 /**
  * One document per user per logged calendar day — matches the app's own
  * Record<dateKey, entry> shape in app-state.tsx, rather than one row per period
@@ -16,7 +18,7 @@ const menstrualRecordSchema = new mongoose.Schema(
     // not the schema (mirrors the "isEnd" comment in the frontend's PeriodDayEntry).
     isPeriodEnd: { type: Boolean, default: false },
 
-    status: { type: String, enum: ["on", "spotting", "off"], default: null },
+    status: { type: String, enum: MENSTRUAL_STATUS, default: null },
     flowLevel: { type: String, default: null },
     symptoms: { type: [String], default: [] },
     mood: { type: String, default: null },
@@ -24,7 +26,7 @@ const menstrualRecordSchema = new mongoose.Schema(
 
     source: {
       type: String,
-      enum: ["calendar", "checkin", "record", "last_period_setup"],
+      enum: MENSTRUAL_RECORD_SOURCES,
       required: true,
     },
   },

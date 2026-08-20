@@ -41,16 +41,29 @@ function groupIntoEpisodes(records) {
  * has for the next-cycle math itself).
  */
 async function recomputeCycleCache(userId) {
-  const records = await MenstrualRecord.find({ userId, isPeriodDay: true }).sort({ date: 1 });
+  const [records, user] = await Promise.all([
+    MenstrualRecord.find({ userId, isPeriodDay: true }).sort({ date: 1 }),
+    // Only the manual onboarding seeds are needed here — see cycle-setup below and the
+    // schema comment on User.cycle.manualCycleLength/manualPeriodLength.
+    User.findById(userId).select("cycle.manualCycleLength cycle.manualPeriodLength"),
+  ]);
+
+  // Falls back to the manual onboarding answer (cycle-length-question.tsx, saved via
+  // PUT /api/menstrual/cycle-setup) whenever there isn't yet enough real history to
+  // compute a real average — only once that's exhausted too do we fall back to the
+  // hardcoded product default. Never the other way around: a manual answer never
+  // overrides real logged history (see the cycleLengths/completedLengths checks below).
+  const fallbackCycleLength = user?.cycle?.manualCycleLength ?? DEFAULT_CYCLE_LENGTH;
+  const fallbackPeriodLength = user?.cycle?.manualPeriodLength ?? DEFAULT_PERIOD_LENGTH;
 
   if (records.length === 0) {
     // Every period day for this user was deleted/un-marked — fall back to the same
-    // "nothing logged yet" state a brand-new account starts in, rather than leaving a
-    // stale cache behind.
+    // "nothing logged yet" state a brand-new account starts in (modulo any manual
+    // estimate already on file), rather than leaving a stale cache behind.
     await User.findByIdAndUpdate(userId, {
       $set: {
-        "cycle.averageCycleLength": DEFAULT_CYCLE_LENGTH,
-        "cycle.averagePeriodLength": DEFAULT_PERIOD_LENGTH,
+        "cycle.averageCycleLength": fallbackCycleLength,
+        "cycle.averagePeriodLength": fallbackPeriodLength,
         "cycle.lastPeriodStart": null,
         "cycle.lastPeriodEnd": null,
         "cycle.nextPeriodStart": null,
@@ -75,7 +88,7 @@ async function recomputeCycleCache(userId) {
     .map((ep) => daysBetween(ep.start, ep.end) + 1);
   const averagePeriodLength = completedLengths.length
     ? Math.round(completedLengths.reduce((sum, n) => sum + n, 0) / completedLengths.length)
-    : DEFAULT_PERIOD_LENGTH;
+    : fallbackPeriodLength;
 
   // Cycle length: average gap between consecutive episode start dates.
   const cycleLengths = [];
@@ -84,7 +97,7 @@ async function recomputeCycleCache(userId) {
   }
   const averageCycleLength = cycleLengths.length
     ? Math.round(cycleLengths.reduce((sum, n) => sum + n, 0) / cycleLengths.length)
-    : DEFAULT_CYCLE_LENGTH;
+    : fallbackCycleLength;
 
   const lastPeriodStart = lastEpisode.start;
   const lastPeriodEnd = lastEpisode.end;

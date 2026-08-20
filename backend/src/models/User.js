@@ -14,6 +14,9 @@ const userSchema = new mongoose.Schema(
 
     profile: {
       name: { type: String, required: true, trim: true },
+      // Collected at registration (register.tsx's "How old are you?" field) — a plain
+      // integer, not a birthdate, since that's all the UI ever asks for.
+      age: { type: Number, default: null },
       // Not collected at registration — set the first time the user goes through the
       // period-setup flow (period-setup.tsx), so this is legitimately null until then.
       dateOfBirth: { type: Date, default: null },
@@ -30,6 +33,14 @@ const userSchema = new mongoose.Schema(
       nextPeriodEnd: { type: Date, default: null },
       fertileWindowStart: { type: Date, default: null },
       fertileWindowEnd: { type: Date, default: null },
+      // The user's own onboarding answer to "do you know your usual cycle/period
+      // length?" (cycle-length-question.tsx) — a seed for averageCycleLength/
+      // averagePeriodLength above, used only while there isn't yet enough real
+      // MenstrualRecord history to compute those for real. See cycleCacheService.js.
+      // Never cleared once set, so it stays available if the real history is later
+      // deleted back down below the 2-episode threshold.
+      manualCycleLength: { type: Number, default: null },
+      manualPeriodLength: { type: Number, default: null },
     },
 
     preferences: {
@@ -37,9 +48,23 @@ const userSchema = new mongoose.Schema(
       checkinReminders: { type: Boolean, default: true },
     },
 
+    // Set via POST /api/profile/push-token. Storage only — there's no FCM/Expo push
+    // *delivery* wired up yet (see reminderRoutes.js's "no push delivery yet" note);
+    // this is the missing piece delivery would eventually read to know where to send.
+    device: {
+      expoPushToken: { type: String, default: null },
+      pushTokenUpdatedAt: { type: Date, default: null },
+    },
+
     onboarding: {
       firstPeriodRecorded: { type: Boolean, default: false },
       firstQuestionAsked: { type: Boolean, default: false },
+      // Set via PUT /api/menstrual/cycle-setup when the user picks "I don't remember
+      // any dates" (last-period-unknown.tsx, Path C of the setup flow) — no
+      // MenstrualRecord is ever created for that path, so nothing else would ever flip
+      // this the way firstPeriodRecorded/firstQuestionAsked flip themselves as a side
+      // effect of some other write.
+      isBeginner: { type: Boolean, default: false },
     },
   },
   { timestamps: true }

@@ -1,9 +1,9 @@
 const express = require("express");
 
 const authMiddleware = require("../middleware/authMiddleware");
-const { getPrediction, listRecords, upsertRecord, deleteRecord } = require("../controllers/menstrualController");
+const { getPrediction, listRecords, upsertRecord, deleteRecord, updateCycleSetup, batchUpsertRecords } = require("../controllers/menstrualController");
 const validate = require("../middleware/validate");
-const { upsertRecordSchema } = require("../validators/menstrualValidators");
+const { upsertRecordSchema, cycleSetupSchema, batchUpsertRecordSchema } = require("../validators/menstrualValidators");
 
 const router = express.Router();
 
@@ -118,6 +118,64 @@ router.post("/records", validate(upsertRecordSchema), upsertRecord);
 
 /**
  * @openapi
+ * /api/menstrual/records/batch:
+ *   post:
+ *     tags: [Menstrual Tracking]
+ *     summary: Log multiple days in one call
+ *     description: >
+ *       Upserts every entry in `records` inside a single Mongo transaction — either all of them are saved or none
+ *       are — then recomputes the cached cycle stats once at the end (see `GET /api/menstrual/prediction`), not
+ *       once per entry. `source` applies to the whole batch, not repeated per entry. Requires a replica-set
+ *       MongoDB deployment for transactions (MongoDB Atlas, used in this project, always qualifies).
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [source, records]
+ *             properties:
+ *               source:
+ *                 type: string
+ *                 enum: [calendar, checkin, record, record_first_period, last_period_one_date]
+ *               records:
+ *                 type: array
+ *                 minItems: 1
+ *                 maxItems: 90
+ *                 items:
+ *                   type: object
+ *                   required: [date]
+ *                   properties:
+ *                     date: { type: string, format: date, example: "2026-08-10" }
+ *                     isPeriodDay: { type: boolean, default: true, description: "Defaults to true here, unlike the single-record POST /records (default false)." }
+ *                     isPeriodEnd: { type: boolean, default: false }
+ *                     status: { type: string, enum: [on, spotting, off] }
+ *                     flow: { type: string, example: medium, description: "Stored as flowLevel on the saved record." }
+ *                     symptoms: { type: array, items: { type: string } }
+ *                     mood: { type: string, example: calm }
+ *                     notes: { type: string }
+ *     responses:
+ *       201:
+ *         description: The created/updated records, in the same order as the request.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string, example: success }
+ *                 data:
+ *                   type: array
+ *                   items: { $ref: '#/components/schemas/MenstrualRecord' }
+ *       400:
+ *         description: Missing `source`, empty/oversized `records`, or an invalid entry.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.post("/records/batch", validate(batchUpsertRecordSchema), batchUpsertRecords);
+
+/**
+ * @openapi
  * /api/menstrual/records/{date}:
  *   delete:
  *     tags: [Menstrual Tracking]
@@ -139,5 +197,55 @@ router.post("/records", validate(upsertRecordSchema), upsertRecord);
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.delete("/records/:date", deleteRecord);
+
+/**
+ * @openapi
+ * /api/menstrual/cycle-setup:
+ *   put:
+ *     tags: [Menstrual Tracking]
+ *     summary: Save onboarding's beginner flag / manual cycle & period length estimate
+ *     description: >
+ *       Server-side landing spot for the setup-flow answers that aren't a dated record: "I don't remember any
+ *       dates" (`isBeginner`, Path C — see `last-period-unknown.tsx`) and "do you know your usual cycle/period
+ *       length?" (`manualCycleLength`/`manualPeriodLength`, asked on Paths A and B — see
+ *       `cycle-length-question.tsx`). Partial update — only provided keys change — but at least one must be
+ *       present. The manual length fields only ever affect `cycle.averageCycleLength`/`averagePeriodLength`
+ *       while there's fewer than 2 fully-logged periods to compute a real average from; once real history
+ *       exists it silently takes over, exactly like the client-side logic in `context/app-state.tsx`. Triggers
+ *       the same cache recompute as `POST`/`DELETE` on `/api/menstrual/records`, so the response's `cycle`
+ *       reflects it immediately.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               isBeginner: { type: boolean }
+ *               manualCycleLength: { type: integer, minimum: 21, maximum: 45, example: 28 }
+ *               manualPeriodLength: { type: integer, minimum: 1, maximum: 14, example: 5 }
+ *     responses:
+ *       200:
+ *         description: Saved. Includes the recomputed cycle cache.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string, example: success }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     isBeginner: { type: boolean }
+ *                     manualCycleLength: { type: integer, nullable: true }
+ *                     manualPeriodLength: { type: integer, nullable: true }
+ *                     cycle: { $ref: '#/components/schemas/CycleCache' }
+ *       400:
+ *         description: No fields provided, or a provided field is out of range.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.put("/cycle-setup", validate(cycleSetupSchema), updateCycleSetup);
 
 module.exports = router;

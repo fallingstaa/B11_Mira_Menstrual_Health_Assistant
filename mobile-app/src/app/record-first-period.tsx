@@ -67,6 +67,13 @@ export default function RecordFirstPeriodScreen() {
     });
   };
 
+  const toggleActiveMood = (key: string) => {
+    const mood = activeEntry?.mood ?? [];
+    updatePeriodDayEntry(activeDay, {
+      mood: mood.includes(key) ? mood.filter((m) => m !== key) : [...mood, key],
+    });
+  };
+
   useEffect(() => {
     if (!saved) return;
     // Go straight to Home, skipping back over the "Let's get you set up" question screen.
@@ -100,13 +107,17 @@ export default function RecordFirstPeriodScreen() {
     setShowCycleLengthPopup(false);
   };
 
-  /** Footer "Mark as End": uses whichever day is already flagged as the end, otherwise flags the active/latest one. */
+  /**
+   * Footer "Mark as End": uses whichever day is already flagged as the end, otherwise flags
+   * the active/latest one. A pure data action, same spirit as tapping a calendar day — it no
+   * longer also exits the screen (finish()) the way it used to. Flagging the end day and being
+   * "done for the session" are two different things; only "Done" below now means the latter.
+   */
   const markAsEnd = () => {
     if (!endEntry) {
       const target = activeEntry ? activeDay : latestEntry?.date;
       if (target) setPeriodEndDay(target);
     }
-    finish('Cycle recorded!');
   };
 
   const headerSubtitle =
@@ -142,15 +153,18 @@ export default function RecordFirstPeriodScreen() {
               style={styles.footerButton}
             />
             <Button
-              label="Save & Continue"
-              icon={<Ionicons name="water" size={16} color={Colors.textOnPrimary} />}
-              disabled={markedCount === 0}
-              onPress={() => finish('Saved! Keep logging as it continues.')}
+              label="Done"
+              icon={<Ionicons name="checkmark" size={16} color={Colors.textOnPrimary} />}
+              // Deliberately never disabled — finishing with nothing marked yet is a valid
+              // outcome (same as "Skip for now" elsewhere in setup), not something to block.
+              // A disabled Save button here — greyed out and unresponsive until a day was
+              // tapped first — is what made this feel "hard to click".
+              onPress={() => finish(markedCount === 0 ? 'All good — come back any time.' : 'Saved! Keep logging as it continues.')}
               style={styles.footerButton}
             />
           </View>
           <AppText variant="caption" center style={styles.footerCaption}>
-            Know when it ended? Mark as End · Not sure yet? Save & Continue to skip for now
+            Tap a day to mark it · Know when it ended? Mark as End · Done finishes up
           </AppText>
         </View>
       }>
@@ -218,6 +232,10 @@ export default function RecordFirstPeriodScreen() {
       <PeriodEntriesSummary
         entries={periodEntries}
         activeDate={activeDay}
+        today={today}
+        // Guided first-time setup — nothing here should read as "locked" yet, there's no history
+        // to protect. See PeriodEntriesSummary's `lockPastMonths` doc.
+        lockPastMonths={false}
         onSelect={jumpToDay}
         onRemove={togglePeriodDay}
         delay={70}
@@ -231,7 +249,7 @@ export default function RecordFirstPeriodScreen() {
         onClearEndDay={() => updatePeriodDayEntry(activeDay, { isEnd: false })}
         onSetFlow={(flow) => updatePeriodDayEntry(activeDay, { flow })}
         onToggleSymptom={toggleActiveSymptom}
-        onSetMood={(mood) => updatePeriodDayEntry(activeDay, { mood })}
+        onToggleMood={toggleActiveMood}
         delay={80}
       />
 

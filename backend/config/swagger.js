@@ -1,5 +1,7 @@
 const swaggerJsdoc = require("swagger-jsdoc");
 
+const { SYMPTOM_OPTIONS, MOOD_OPTIONS } = require("../src/utils/constants");
+
 /**
  * Central OpenAPI 3 definition for the Mira API. The `apis` glob below pulls in
  * `@openapi` JSDoc blocks written directly above each route in src/routes/*.js —
@@ -177,8 +179,8 @@ const swaggerDefinition = {
           isPeriodEnd: { type: "boolean", description: "At most one record per user has this set to true." },
           status: { type: "string", nullable: true, enum: ["on", "spotting", "off", null] },
           flowLevel: { type: "string", nullable: true, example: "medium" },
-          symptoms: { type: "array", items: { type: "string" }, example: ["cramps", "headache"] },
-          mood: { type: "string", nullable: true, example: "calm" },
+          symptoms: { type: "array", items: { type: "string", enum: SYMPTOM_OPTIONS }, example: ["cramps", "headache"] },
+          mood: { type: "array", items: { type: "string", enum: MOOD_OPTIONS }, example: ["calm"], description: "Multi-select — a day can have more than one." },
           notes: { type: "string", example: "Felt tired today" },
           source: { type: "string", enum: ["calendar", "checkin", "record", "record_first_period", "last_period_one_date"] },
           createdAt: { type: "string", format: "date-time" },
@@ -194,8 +196,8 @@ const swaggerDefinition = {
           isPeriodEnd: { type: "boolean" },
           status: { type: "string", enum: ["on", "spotting", "off"] },
           flowLevel: { type: "string", example: "medium" },
-          symptoms: { type: "array", items: { type: "string" } },
-          mood: { type: "string", example: "calm" },
+          symptoms: { type: "array", items: { type: "string", enum: SYMPTOM_OPTIONS } },
+          mood: { type: "array", items: { type: "string", enum: MOOD_OPTIONS }, example: ["calm"] },
           notes: { type: "string" },
           source: { type: "string", enum: ["calendar", "checkin", "record", "record_first_period", "last_period_one_date"] },
         },

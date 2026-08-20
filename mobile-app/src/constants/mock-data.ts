@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+
 /**
  * Static mock data powering the UI-only Mira prototype.
  * Nothing here touches the backend — swap for real API/state once endpoints exist.
@@ -38,24 +40,49 @@ export const flowLevels = [
   { key: 'heavy', label: 'Heavy', color: '#AD0E38' },
 ] as const;
 
+// Final list (locked 2026-08-20) — text-only, no icons/emoji by design. Keys are the values
+// actually stored/sent (kebab-case); labels are what's shown. Mirrored on the backend as
+// SYMPTOM_OPTIONS in utils/constants.js — update both together if this list ever changes.
 export const symptomOptions = [
-  { key: 'cramps', label: 'Cramps', icon: '🤕' },
-  { key: 'headache', label: 'Headache', icon: '🤯' },
-  { key: 'bloating', label: 'Bloating', icon: '🎈' },
-  { key: 'fatigue', label: 'Fatigue', icon: '😴' },
-  { key: 'acne', label: 'Acne', icon: '🌱' },
-  { key: 'backache', label: 'Backache', icon: '🦴' },
-  { key: 'nausea', label: 'Nausea', icon: '🤢' },
-  { key: 'tender', label: 'Tender chest', icon: '💗' },
+  { key: 'everything-is-fine', label: 'Everything is fine' },
+  { key: 'cramps', label: 'Cramps' },
+  { key: 'tender-breasts', label: 'Tender breasts' },
+  { key: 'headache', label: 'Headache' },
+  { key: 'acne', label: 'Acne' },
+  { key: 'backache', label: 'Backache' },
+  { key: 'fatigue', label: 'Fatigue' },
+  { key: 'cravings', label: 'Cravings' },
+  { key: 'insomnia', label: 'Insomnia' },
+  { key: 'abdominal-pain', label: 'Abdominal pain' },
+  { key: 'vaginal-itching', label: 'Vaginal itching' },
+  { key: 'vaginal-dryness', label: 'Vaginal dryness' },
+  { key: 'hot-flashes', label: 'Hot flashes' },
+  { key: 'night-sweats', label: 'Night sweats' },
+  { key: 'joint-pain', label: 'Joint pain' },
+  { key: 'brain-fog', label: 'Brain fog' },
+  { key: 'dry-skin', label: 'Dry skin' },
+  { key: 'dry-eyes', label: 'Dry eyes' },
 ];
 
+// Final list (locked 2026-08-20) — text-only, no icons/emoji by design. Keys are the values
+// actually stored/sent (kebab-case); labels are what's shown. Mirrored on the backend as
+// MOOD_OPTIONS in utils/constants.js — update both together if this list ever changes.
 export const moodOptions = [
-  { key: 'happy', label: 'Happy', icon: '😊' },
-  { key: 'calm', label: 'Calm', icon: '😌' },
-  { key: 'sad', label: 'Sad', icon: '😢' },
-  { key: 'anxious', label: 'Anxious', icon: '😟' },
-  { key: 'irritable', label: 'Irritable', icon: '😤' },
-  { key: 'tired', label: 'Tired', icon: '🥱' },
+  { key: 'calm', label: 'Calm' },
+  { key: 'happy', label: 'Happy' },
+  { key: 'energetic', label: 'Energetic' },
+  { key: 'frisky', label: 'Frisky' },
+  { key: 'mood-swings', label: 'Mood swings' },
+  { key: 'irritated', label: 'Irritated' },
+  { key: 'sad', label: 'Sad' },
+  { key: 'anxious', label: 'Anxious' },
+  { key: 'depressed', label: 'Depressed' },
+  { key: 'feeling-guilty', label: 'Feeling guilty' },
+  { key: 'obsessive-thoughts', label: 'Obsessive thoughts' },
+  { key: 'low-energy', label: 'Low energy' },
+  { key: 'apathetic', label: 'Apathetic' },
+  { key: 'confused', label: 'Confused' },
+  { key: 'very-self-critical', label: 'Very self-critical' },
 ];
 
 export type HealthTip = {
@@ -154,7 +181,8 @@ export type Article = {
   title: string;
   summary: string;
   readTime: string;
-  emoji: string;
+  /** Ionicon name (no emoji anywhere in this app) — see education-card.tsx / article/[id].tsx. */
+  icon: keyof typeof Ionicons.glyphMap;
   color: string;
   tint: string;
   body: string[];
@@ -167,7 +195,7 @@ export const articles: Article[] = [
     title: 'What Actually Happens During Your Period?',
     summary: 'A simple, judgement-free walkthrough of the menstrual cycle.',
     readTime: '4 min read',
-    emoji: '🩸',
+    icon: 'water',
     color: '#AD0E38',
     tint: '#FDF1F4',
     body: [
@@ -182,7 +210,7 @@ export const articles: Article[] = [
     title: 'Pad, Tampon, or Cup? Finding What Works',
     summary: 'A friendly comparison of period products for beginners.',
     readTime: '5 min read',
-    emoji: '🧼',
+    icon: 'options-outline',
     color: '#2FB8A6',
     tint: '#E7F8F5',
     body: [
@@ -197,7 +225,7 @@ export const articles: Article[] = [
     title: 'How Often Should You Change Your Pad?',
     summary: 'Simple rules to stay fresh, comfortable, and healthy.',
     readTime: '3 min read',
-    emoji: '🕒',
+    icon: 'time-outline',
     color: '#2FB8A6',
     tint: '#E7F8F5',
     body: [
@@ -212,7 +240,7 @@ export const articles: Article[] = [
     title: 'Cramps 101: Why They Happen & What Helps',
     summary: 'Understand period pain and gentle ways to ease it.',
     readTime: '4 min read',
-    emoji: '🤕',
+    icon: 'medkit-outline',
     color: '#E8A23A',
     tint: '#FDF3E3',
     body: [
@@ -227,7 +255,7 @@ export const articles: Article[] = [
     title: 'Mood Swings Are Real — Here\'s Why',
     summary: 'The hormone science behind feeling extra emotional.',
     readTime: '3 min read',
-    emoji: '💗',
+    icon: 'heart-outline',
     color: '#E8A23A',
     tint: '#FDF3E3',
     body: [
@@ -242,7 +270,7 @@ export const articles: Article[] = [
     title: '5 Period Myths You Should Stop Believing',
     summary: 'Busting common misconceptions with real facts.',
     readTime: '4 min read',
-    emoji: '🚫',
+    icon: 'ban-outline',
     color: '#8B7CF6',
     tint: '#F0EDFE',
     body: [

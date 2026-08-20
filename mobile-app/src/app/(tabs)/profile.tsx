@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/mira/app-text';
 import { Card } from '@/components/mira/card';
+import { EditProfileModal } from '@/components/mira/edit-profile-modal';
 import { IconCircle } from '@/components/mira/icon-circle';
+import { LanguagePickerModal } from '@/components/mira/language-picker-modal';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { SettingsRow } from '@/components/mira/settings-row';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -27,6 +29,11 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // UI-only for now, same as the rest of this edit flow — there's no photo field on the real
+  // profile model yet, so this just lives here for the mockup rather than inside ProfileData.
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,20 +75,52 @@ export default function ProfileScreen() {
     router.replace('/login');
   };
 
+  /** Same optimistic-save/rollback shape as updatePreference — preferredLanguage is already a
+   *  real, saved field on the backend profile (see profileController.js), just never had a UI to
+   *  set it before now. */
+  const handleSelectLanguage = async (language: string) => {
+    setLanguageModalVisible(false);
+    if (!profile || profile.preferredLanguage === language) return;
+    const previous = profile.preferredLanguage;
+    setProfile({ ...profile, preferredLanguage: language });
+
+    try {
+      await apiRequest('/profile/me', { method: 'PUT', body: { preferredLanguage: language } });
+    } catch (err) {
+      console.error('[profile] failed to save language, rolling back:', err);
+      setProfile((p) => (p ? { ...p, preferredLanguage: previous } : p));
+    }
+  };
+
+  /**
+   * UI-only save, per profile.tsx's doc comment on this edit flow — updates what's shown on this
+   * page immediately, same "optimistic" feel as updatePreference above, but doesn't PUT anything
+   * to `/profile/me` yet. Wire this up to the backend once there's a name/email/photo endpoint.
+   */
+  const handleSaveProfile = (details: { name: string; email: string; photoUri: string | null }) => {
+    setProfile((p) => (p ? { ...p, name: details.name, email: details.email } : p));
+    setAvatarUri(details.photoUri);
+    setEditModalVisible(false);
+  };
+
   const avatarInitial = profile?.name?.trim().charAt(0).toUpperCase() || '?';
 
   return (
-    <ScreenContainer>
+    <ScreenContainer tabBar>
       <AppText variant="h1" style={styles.pageTitle}>
         Profile
       </AppText>
 
       <Card style={styles.profileCard}>
-        <IconCircle color={Colors.tint100} size={64}>
-          <AppText variant="h1" color={Colors.primary}>
-            {avatarInitial}
-          </AppText>
-        </IconCircle>
+        {avatarUri ? (
+          <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+        ) : (
+          <IconCircle color={Colors.tint100} size={64}>
+            <AppText variant="h1" color={Colors.primary}>
+              {avatarInitial}
+            </AppText>
+          </IconCircle>
+        )}
         <View style={{ flex: 1 }}>
           {loading ? (
             <AppText variant="small">Loading…</AppText>
@@ -98,8 +137,7 @@ export default function ProfileScreen() {
             </>
           )}
         </View>
-        {/* TODO: no edit screen/modal wired up yet — still a stub, next up after this. */}
-        <Pressable style={styles.editButton} hitSlop={8}>
+        <Pressable style={styles.editButton} hitSlop={8} onPress={() => setEditModalVisible(true)} disabled={!profile}>
           <Ionicons name="create-outline" size={17} color={Colors.primary} />
         </Pressable>
       </Card>
@@ -111,6 +149,7 @@ export default function ProfileScreen() {
           tint={Colors.lavenderTint}
           label="Language"
           value={profile?.preferredLanguage ?? 'English'}
+          onPress={() => profile && setLanguageModalVisible(true)}
         />
         <Divider />
         <SettingsRow
@@ -154,6 +193,25 @@ export default function ProfileScreen() {
       <AppText variant="caption" center style={styles.version}>
         Mira v1.0.0 · Made with care for first-time menstruators
       </AppText>
+
+      {profile && (
+        <>
+          <EditProfileModal
+            visible={editModalVisible}
+            name={profile.name}
+            email={profile.email}
+            photoUri={avatarUri}
+            onCancel={() => setEditModalVisible(false)}
+            onSave={handleSaveProfile}
+          />
+          <LanguagePickerModal
+            visible={languageModalVisible}
+            value={profile.preferredLanguage}
+            onSelect={handleSelectLanguage}
+            onClose={() => setLanguageModalVisible(false)}
+          />
+        </>
+      )}
     </ScreenContainer>
   );
 }
@@ -178,6 +236,7 @@ function Divider() {
 const styles = StyleSheet.create({
   pageTitle: { marginTop: Spacing.md, marginBottom: Spacing.lg },
   profileCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.xl },
+  avatarImage: { width: 64, height: 64, borderRadius: 32 },
   editButton: {
     width: 34,
     height: 34,

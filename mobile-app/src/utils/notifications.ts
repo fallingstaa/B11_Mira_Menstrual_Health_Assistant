@@ -27,8 +27,12 @@ import { addDays, dateKey, daysBetween } from '@/utils/date';
  *    be sanity-checked on a real device in under a minute instead of over two weeks.
  * The "only if" conditions on Alerts 5–10 still apply in test mode — logging a period during the
  * test still cancels the late ones, exactly like production.
+ *
+ * PAUSED (2026-08-20): flipped back to `false` on request — the rapid-fire 5–50s test
+ * schedule was getting in the way of normal testing. Nothing else here changed; flip
+ * back to `true` any time to resume it.
  */
-export const IS_NOTIFICATION_TEST_MODE = true;
+export const IS_NOTIFICATION_TEST_MODE = false;
 
 const NOTIFICATION_TITLE = IS_NOTIFICATION_TEST_MODE ? '[TEST] Mira' : 'Mira';
 

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,6 +14,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/mira/app-text';
+import { TAB_BAR_CLEARANCE } from '@/components/mira/bottom-nav';
 import { ChatBubble } from '@/components/mira/chat-bubble';
 import { Chip } from '@/components/mira/chip';
 import { MascotMini } from '@/components/mira/mascot';
@@ -48,6 +50,24 @@ export default function AssistantScreen() {
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
+  // This is a real tab screen (Tabs renders BottomNav as a floating overlay on top of it, not a
+  // pushed screen without one), so unlike record.tsx/checkin.tsx/prediction.tsx the input row
+  // has to actively clear the tab bar's own touchable rect — otherwise it sits underneath it and
+  // taps on it never reach the TextInput at all (not just visually covered, unreachable). Only
+  // needed while the keyboard is closed: once it's up, KeyboardAvoidingView already pads this
+  // whole column above the (much taller) keyboard, so the tab bar's gone from under it anyway.
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const scrollToEnd = () => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
 
@@ -119,14 +139,22 @@ export default function AssistantScreen() {
       </ScrollView>
 
       {messages.length <= initialChat.length && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestionsRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.suggestionsScroll}
+          contentContainerStyle={styles.suggestionsRow}>
           {chatSuggestions.map((s) => (
-            <Chip key={s} label={s} onPress={() => send(s)} />
+            <Chip key={s} label={s} onPress={() => send(s)} style={styles.suggestionChip} />
           ))}
         </ScrollView>
       )}
 
-      <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
+      <View
+        style={[
+          styles.inputRow,
+          { paddingBottom: keyboardVisible ? Math.max(insets.bottom, Spacing.md) : TAB_BAR_CLEARANCE },
+        ]}>
         <TextInput
           value={input}
           onChangeText={setInput}
@@ -171,7 +199,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   typingBubble: { backgroundColor: Colors.surfaceAlt, borderRadius: Radius.lg, borderBottomLeftRadius: 4, paddingHorizontal: Spacing.sm },
-  suggestionsRow: { gap: Spacing.sm, paddingHorizontal: Spacing.xxl, paddingBottom: Spacing.md },
+  // Explicit, bounded height on the ScrollView itself (not just its content) — a normal chatbot's
+  // quick-reply strip is one short row, never something that can stretch to fill whatever space
+  // happens to be left above the input. alignItems: 'center' on the row is the same guarantee
+  // from the other axis, so a chip can never get pulled taller than its own content either way.
+  suggestionsScroll: { height: 44, marginBottom: Spacing.md },
+  suggestionsRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.xxl },
+  // Smaller than the standard Chip footprint used for Symptoms/Mood/Flow pickers elsewhere —
+  // those are deliberate multi-select form fields; a chat suggestion is a lighter, one-tap
+  // "try asking this" nudge, so it reads more like Messenger/ChatGPT's quick-reply pills.
+  suggestionChip: { paddingVertical: Spacing.xs, paddingHorizontal: Spacing.md },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',

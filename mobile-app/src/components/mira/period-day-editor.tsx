@@ -6,6 +6,9 @@ import { AppText } from '@/components/mira/app-text';
 import { Button } from '@/components/mira/button';
 import { Card } from '@/components/mira/card';
 import { Chip } from '@/components/mira/chip';
+import { CollapsibleChipField } from '@/components/mira/collapsible-chip-field';
+import { ConfirmChipGroup } from '@/components/mira/confirm-chip-group';
+import { FlowLevelPicker } from '@/components/mira/flow-level-picker';
 import { flowLevels, moodOptions, symptomOptions } from '@/constants/mock-data';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { PeriodDayEntry } from '@/context/app-state';
@@ -14,21 +17,41 @@ import { dateKey, formatLong } from '@/utils/date';
 type Props = {
   date: Date;
   entry?: PeriodDayEntry;
+  /**
+   * Marks/unmarks this day as a period day. No longer exposed as its own button — see the
+   * component doc comment below — but still called internally, both automatically (the moment
+   * any field is edited on an unmarked day) and as a fallback inside "Record" if a day somehow
+   * reaches Record still unmarked.
+   */
   onToggleMark: () => void;
   onSetEndDay: () => void;
   onClearEndDay: () => void;
   onSetFlow: (flow: string) => void;
   onToggleSymptom: (key: string) => void;
-  onSetMood: (mood: string) => void;
+  /** Multi-select, same shape as onToggleSymptom — a day can have more than one mood at once. */
+  onToggleMood: (key: string) => void;
   /** Called when "Record" is pressed — everything is already saved live, this is just the user's confirm step. */
   onRecord?: () => void;
   delay?: number;
 };
 
 /**
- * "Edit this day" card — mark/unmark, pick Period day vs End day, optional flow/symptoms/mood.
- * Shared by the guided first-time flow and the Calendar tab so marking a day (or moving the end
- * date) behaves identically and stays in sync wherever it's edited.
+ * "Edit this day" card — Period day vs End day, optional flow/symptoms/mood, one "Record" button
+ * to confirm. Shared by the guided first-time flow and the Calendar tab so editing a day behaves
+ * identically and stays in sync wherever it's edited.
+ *
+ * ONE button, not two: this used to have a separate "Mark as Period Day" toggle above the optional
+ * fields, plus "Record" below — two actions that looked like they both finalized something, which
+ * read as confusing. Now there's just "Record". Marking still happens the moment it's needed — the
+ * instant any field below is touched on a day that isn't marked yet (see `ensureMarked`), or as a
+ * fallback inside `handleRecord` if Record is pressed with nothing else touched first — so a day
+ * always ends up marked without a dedicated button for it. Un-marking a day still goes through the
+ * ✕ in the "Recorded Days" list (PeriodEntriesSummary) on both screens that use this component,
+ * unchanged.
+ *
+ * On the Calendar tab this only ever opens for the *current* month — a past month's days go
+ * through Calendar's own multi-select + BatchRecordModal instead, since those lock for editing
+ * the instant they're saved. See Calendar's `openDayEditor`/`selectDay`.
  */
 export function PeriodDayEditor({
   date,
@@ -38,18 +61,45 @@ export function PeriodDayEditor({
   onClearEndDay,
   onSetFlow,
   onToggleSymptom,
-  onSetMood,
+  onToggleMood,
   onRecord,
   delay = 0,
 }: Props) {
   const isMarked = !!entry;
   const symptoms = entry?.symptoms ?? [];
+  const moods = entry?.mood ?? [];
   const key = dateKey(date);
   const [justRecorded, setJustRecorded] = useState(false);
-  // Which marked days have already been "Recorded" and collapsed back down, keyed by day — so
-  // confirming one day doesn't affect another, and re-marking a day always re-opens it fresh.
+  // Which days have already been "Recorded" and collapsed back down, keyed by day — so
+  // confirming one day doesn't affect another, and a freshly-selected day always opens expanded.
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
-  const isExpanded = isMarked && !collapsedDays[key];
+  const isExpanded = !collapsedDays[key];
+
+  // Whether "Day type" has actually been tapped for this day, keyed by day. `entry.isEnd` alone
+  // can't answer this — it's only ever `true` once explicitly set, but `false`/absent is
+  // genuinely ambiguous between "confirmed as a regular period day" and "never touched". Without
+  // this, "Period day" used to show pre-selected by default the moment a day was marked, before
+  // the user had ever actually chosen anything — this makes that an explicit action instead.
+  const [dayTypeTouched, setDayTypeTouched] = useState<Record<string, boolean>>({});
+  const isDayTypeConfirmed = !!dayTypeTouched[key] || entry?.isEnd === true;
+  // Three-way, matching checkin.tsx's "Period status" (on my period / spotting / not on my
+  // period) — "Spotting" here is derived from Flow rather than stored separately, so picking it
+  // in either place (this chip, or the Spotting option down in Flow · optional) stays in sync
+  // both ways instead of tracking the same idea twice.
+  const dayType: 'period' | 'spotting' | 'end' = entry?.isEnd ? 'end' : entry?.flow === 'spotting' ? 'spotting' : 'period';
+
+  // Whether Record has ever actually gone through for this day — deliberately NOT the same as
+  // "isMarked": touching any field marks the day immediately (see ensureMarked below), which
+  // would otherwise make the button claim "Update Record" before the very first Record press
+  // ever happened. Seeded true on the first render for a day that already had real saved data
+  // (reopening something that already exists is always an update, even before this particular
+  // visit touches anything), then set on every actual Record press from then on.
+  const [recordedKeys, setRecordedKeys] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    if (entry) setRecordedKeys((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const hasBeenRecorded = !!recordedKeys[key];
 
   useEffect(() => {
     if (!justRecorded) return;
@@ -57,14 +107,48 @@ export function PeriodDayEditor({
     return () => clearTimeout(t);
   }, [justRecorded]);
 
-  const handleToggleMark = () => {
-    onToggleMark();
-    setCollapsedDays((prev) => (prev[key] ? { ...prev, [key]: false } : prev));
+  /** Marks this day if it isn't already — safe to call unconditionally before any field edit. */
+  const ensureMarked = () => {
+    if (!isMarked) onToggleMark();
+  };
+
+  const handleSetEndDay = () => {
+    ensureMarked();
+    onSetEndDay();
+    setDayTypeTouched((prev) => ({ ...prev, [key]: true }));
+  };
+  const handleSetPeriodDay = () => {
+    ensureMarked();
+    onClearEndDay();
+    // Moving off "Spotting" back to a plain period day should actually change something visible
+    // — otherwise tapping this while Flow is still "Spotting" would look like it did nothing.
+    if (entry?.flow === 'spotting') onSetFlow('');
+    setDayTypeTouched((prev) => ({ ...prev, [key]: true }));
+  };
+  const handleSetSpotting = () => {
+    ensureMarked();
+    onClearEndDay();
+    onSetFlow('spotting');
+    setDayTypeTouched((prev) => ({ ...prev, [key]: true }));
+  };
+  const handleSetFlow = (flow: string) => {
+    ensureMarked();
+    onSetFlow(flow);
+  };
+  const handleToggleSymptom = (symptomKey: string) => {
+    ensureMarked();
+    onToggleSymptom(symptomKey);
+  };
+  const handleToggleMood = (moodKey: string) => {
+    ensureMarked();
+    onToggleMood(moodKey);
   };
 
   const handleRecord = () => {
+    ensureMarked(); // covers Record being pressed with no fields touched at all
     onRecord?.();
     setJustRecorded(true);
+    setRecordedKeys((prev) => ({ ...prev, [key]: true }));
     // Collapse back to the plain calendar-style view — the details stay saved, just tucked away.
     setCollapsedDays((prev) => ({ ...prev, [key]: true }));
   };
@@ -74,7 +158,7 @@ export function PeriodDayEditor({
   const summaryParts: string[] = [];
   if (entry?.flow) summaryParts.push(flowLevels.find((f) => f.key === entry.flow)?.label ?? '');
   if (entry?.symptoms.length) summaryParts.push(`${entry.symptoms.length} symptom${entry.symptoms.length === 1 ? '' : 's'}`);
-  if (entry?.mood) summaryParts.push(moodOptions.find((m) => m.key === entry.mood)?.icon ?? '');
+  if (entry?.mood.length) summaryParts.push(`${entry.mood.length} mood${entry.mood.length === 1 ? '' : 's'}`);
 
   return (
     <Card style={styles.card} delay={delay}>
@@ -85,84 +169,78 @@ export function PeriodDayEditor({
             {isMarked && (
               <Ionicons name={entry?.isEnd ? 'flag' : 'checkmark-circle'} size={14} color={Colors.primary} />
             )}
-            <AppText variant="small" color={isMarked ? Colors.primary : Colors.textMuted}>
-              {entry?.isEnd ? 'End day' : isMarked ? 'Period day' : 'Not marked yet'}
+            <AppText
+              variant="small"
+              numberOfLines={1}
+              style={styles.statusText}
+              color={isMarked ? Colors.primary : Colors.textMuted}>
+              {!isMarked
+                ? 'Not marked yet'
+                : // Kept short on purpose — the DAY TYPE box right below already spells out "Confirm
+                  // below" on its own badge, so this just needs to say *that* it's unconfirmed, not
+                  // repeat the instruction in full (that full sentence is what was wrapping/clipping).
+                  !isDayTypeConfirmed
+                  ? 'Marked — not confirmed'
+                  : dayType === 'end'
+                    ? 'End day'
+                    : dayType === 'spotting'
+                      ? 'Spotting'
+                      : 'Period day'}
             </AppText>
           </View>
           {!isExpanded && summaryParts.length > 0 && (
-            <AppText variant="small" color={Colors.textMuted} style={styles.summaryLine}>
+            <AppText variant="small" numberOfLines={1} color={Colors.textMuted} style={styles.summaryLine}>
               {summaryParts.join(' · ')}
             </AppText>
           )}
         </View>
-        <Pressable
-          onPress={handleToggleMark}
-          style={[styles.toggleButton, isMarked ? styles.toggleButtonOutline : styles.toggleButtonFilled]}>
-          <AppText variant="bodyMedium" color={isMarked ? Colors.primary : Colors.textOnPrimary}>
-            {isMarked ? 'Unmark' : 'Mark as Period Day'}
-          </AppText>
+        <Pressable onPress={toggleExpanded} hitSlop={8} style={styles.chevronButton}>
+          <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textMuted} />
         </Pressable>
-        {isMarked && (
-          <Pressable onPress={toggleExpanded} hitSlop={8} style={styles.chevronButton}>
-            <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textMuted} />
-          </Pressable>
-        )}
       </View>
 
       {isExpanded && (
         <>
           <View style={styles.divider} />
 
-          <FieldGroup label="Day type">
-            <View style={styles.chipRow}>
-              <Chip label="Period day" selected={!entry?.isEnd} onPress={onClearEndDay} />
-              <Chip label="End day" selected={!!entry?.isEnd} color={Colors.primaryDark} onPress={onSetEndDay} />
+          <ConfirmChipGroup label="DAY TYPE" confirmed={isDayTypeConfirmed} style={styles.dayTypeBox}>
+            {/* Fixed 3-way row, not wrap or scroll — each chip is flex: 1, so the three always
+                divide one line evenly no matter the device width, shrinking together instead of
+                wrapping or needing a swipe. */}
+            <View style={styles.fitRow}>
+              <Chip label="Period day" style={styles.fitChip} selected={isDayTypeConfirmed && dayType === 'period'} onPress={handleSetPeriodDay} />
+              <Chip label="Spotting" style={styles.fitChip} selected={isDayTypeConfirmed && dayType === 'spotting'} onPress={handleSetSpotting} />
+              <Chip label="End day" style={styles.fitChip} selected={isDayTypeConfirmed && dayType === 'end'} color={Colors.primaryDark} onPress={handleSetEndDay} />
             </View>
-          </FieldGroup>
+          </ConfirmChipGroup>
 
           <FieldGroup label="Flow · optional">
-            <View style={styles.chipRow}>
-              {flowLevels.map((f) => (
-                <Chip
-                  key={f.key}
-                  label={f.label}
-                  selected={entry?.flow === f.key}
-                  color={f.color}
-                  onPress={() => onSetFlow(f.key)}
-                />
-              ))}
-            </View>
+            <FlowLevelPicker value={entry?.flow ?? ''} onChange={handleSetFlow} />
           </FieldGroup>
 
-          <FieldGroup label="Symptoms · optional">
-            <View style={styles.chipRow}>
-              {symptomOptions.map((s) => (
-                <Chip
-                  key={s.key}
-                  label={s.label}
-                  icon={s.icon}
-                  selected={symptoms.includes(s.key)}
-                  onPress={() => onToggleSymptom(s.key)}
-                />
-              ))}
-            </View>
-          </FieldGroup>
-
-          <FieldGroup label="Mood · optional">
-            <View style={styles.moodRow}>
-              {moodOptions.map((m) => (
-                <Pressable
-                  key={m.key}
-                  onPress={() => onSetMood(m.key)}
-                  style={[styles.moodButton, entry?.mood === m.key && styles.moodButtonSelected]}>
-                  <AppText style={styles.moodEmoji}>{m.icon}</AppText>
-                </Pressable>
-              ))}
-            </View>
-          </FieldGroup>
+          {/* key={key} forces a fresh instance per day — otherwise browsing from a day where this
+              was expanded to a different, untouched day would carry that expanded state along
+              with it, instead of each day starting collapsed (or open, if it already has data)
+              on its own. */}
+          <CollapsibleChipField
+            key={key + '-symptoms'}
+            label="Symptoms"
+            options={symptomOptions}
+            selectedKeys={symptoms}
+            onToggle={handleToggleSymptom}
+            style={styles.collapsibleField}
+          />
+          <CollapsibleChipField
+            key={key + '-mood'}
+            label="Mood"
+            options={moodOptions}
+            selectedKeys={moods}
+            onToggle={handleToggleMood}
+            style={styles.collapsibleField}
+          />
 
           <Button
-            label={justRecorded ? 'Recorded!' : 'Record'}
+            label={justRecorded ? 'Recorded!' : hasBeenRecorded ? 'Update Record' : 'Record'}
             icon={<Ionicons name={justRecorded ? 'checkmark-circle' : 'save-outline'} size={16} color={Colors.textOnPrimary} />}
             onPress={handleRecord}
             style={justRecorded ? styles.recordButtonSuccess : styles.recordButton}
@@ -176,7 +254,7 @@ export function PeriodDayEditor({
 function FieldGroup({ label, last, children }: { label: string; last?: boolean; children: ReactNode }) {
   return (
     <View style={!last && styles.fieldGroup}>
-      <AppText variant="caption" style={styles.fieldLabel}>
+      <AppText variant="caption" numberOfLines={1} style={styles.fieldLabel}>
         {label.toUpperCase()}
       </AppText>
       {children}
@@ -188,10 +266,10 @@ const styles = StyleSheet.create({
   card: {},
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  // flexShrink lets the Text actually respect the row's available width instead of overflowing
+  // past it — without it, numberOfLines={1} has nothing to truncate against inside a flex row.
+  statusText: { flexShrink: 1 },
   summaryLine: { marginTop: 2 },
-  toggleButton: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm + 2, borderRadius: Radius.pill },
-  toggleButtonFilled: { backgroundColor: Colors.primary },
-  toggleButtonOutline: { backgroundColor: Colors.tint50, borderWidth: 1.5, borderColor: Colors.primary },
   chevronButton: {
     width: 32,
     height: 32,
@@ -201,22 +279,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   divider: { height: 1, backgroundColor: Colors.border, marginTop: Spacing.lg },
+  // Just the outer spacing — the box's own look now lives in ConfirmChipGroup, shared with
+  // checkin.tsx's "Period status".
+  dayTypeBox: { marginTop: Spacing.lg, marginBottom: Spacing.lg },
   fieldGroup: { marginBottom: Spacing.lg },
+  // Unlike FieldGroup (which bakes its top spacing into the label itself), CollapsibleChipField
+  // has no built-in margin — needs both top and bottom set explicitly when stacked like this.
+  collapsibleField: { marginTop: Spacing.lg, marginBottom: Spacing.lg },
   fieldLabel: { marginTop: Spacing.lg, marginBottom: Spacing.sm },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  moodRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  moodButton: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.tint50,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  moodButtonSelected: { backgroundColor: Colors.tint100, borderColor: Colors.primary },
-  moodEmoji: { fontSize: 20 },
+  // Day Type's fixed 3-option row — see the `fitChip` (flex: 1) note above its usage.
+  fitRow: { flexDirection: 'row', gap: Spacing.xs },
+  fitChip: { flex: 1, paddingHorizontal: Spacing.sm },
   recordButton: { marginTop: Spacing.xl },
   recordButtonSuccess: { marginTop: Spacing.xl, backgroundColor: Colors.success },
 });

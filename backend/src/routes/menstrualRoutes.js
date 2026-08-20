@@ -151,8 +151,17 @@ router.post("/records", validate(upsertRecordSchema), upsertRecord);
  *                     isPeriodEnd: { type: boolean, default: false }
  *                     status: { type: string, enum: [on, spotting, off] }
  *                     flow: { type: string, example: medium, description: "Stored as flowLevel on the saved record." }
- *                     symptoms: { type: array, items: { type: string } }
- *                     mood: { type: string, example: calm }
+ *                     symptoms:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                         enum: [everything-is-fine, cramps, tender-breasts, headache, acne, backache, fatigue, cravings, insomnia, abdominal-pain, vaginal-itching, vaginal-dryness, hot-flashes, night-sweats, joint-pain, brain-fog, dry-skin, dry-eyes]
+ *                     mood:
+ *                       type: array
+ *                       description: Multi-select — a day can have more than one.
+ *                       items:
+ *                         type: string
+ *                         enum: [calm, happy, energetic, frisky, mood-swings, irritated, sad, anxious, depressed, feeling-guilty, obsessive-thoughts, low-energy, apathetic, confused, very-self-critical]
  *                     notes: { type: string }
  *     responses:
  *       201:

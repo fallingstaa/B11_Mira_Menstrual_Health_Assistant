@@ -73,7 +73,7 @@ export default function HomeScreen() {
   ];
 
   return (
-    <ScreenContainer>
+    <ScreenContainer tabBar>
       {firstPeriodRecorded ? (
         <>
           <View style={styles.headerRow}>
@@ -181,7 +181,10 @@ export default function HomeScreen() {
             icon="water"
             color={Colors.primary}
             tint={Colors.tint50}
-            onPress={() => router.push(firstPeriodRecorded ? '/record' : '/period-setup')}
+            // Routes into Calendar instead of the old standalone /record screen — Calendar's own
+            // day editor (tap a day → same Record/Update Record flow) already covers this, so
+            // there's no separate flow to keep in sync anymore.
+            onPress={() => router.push(firstPeriodRecorded ? '/(tabs)/calendar' : '/period-setup')}
           />
           <QuickAction label="Calendar" icon="calendar" color={Colors.teal} tint={Colors.tealTint} onPress={() => router.push('/(tabs)/calendar')} />
           <QuickAction label="Education" icon="book" color={Colors.lavender} tint={Colors.lavenderTint} onPress={() => router.push('/(tabs)/education')} />

@@ -6,6 +6,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const DEV_TITLE = '[TEST] Mira';
 const FIRE_DELAY_SECONDS = 3;
 
+/**
+ * PAUSED (2026-08-20): flipped to `false` on request — the floating panel was getting
+ * in the way of normal testing. Component, buttons, and firing logic below are all
+ * untouched; flip back to `true` any time to bring the panel back.
+ */
+const IS_TESTER_ENABLED = false;
+
 type TestButton = { key: string; label: string; body: string };
 
 /**
@@ -59,7 +66,7 @@ export function DevNotificationTester() {
   const insets = useSafeAreaInsets();
   const [collapsed, setCollapsed] = useState(true);
 
-  if (!__DEV__) return null;
+  if (!__DEV__ || !IS_TESTER_ENABLED) return null;
 
   return (
     <View style={[styles.wrap, { paddingBottom: insets.bottom }]} pointerEvents="box-none">

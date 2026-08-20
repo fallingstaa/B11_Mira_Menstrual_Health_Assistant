@@ -19,7 +19,7 @@ export function EducationCard({ article, onPress, delay = 0 }: Props) {
     <Card delay={delay} style={styles.card}>
       <Pressable onPress={onPress} style={styles.row}>
         <IconCircle color={article.tint} size={54}>
-          <AppText style={styles.emoji}>{article.emoji}</AppText>
+          <Ionicons name={article.icon} size={24} color={article.color} />
         </IconCircle>
         <View style={styles.textWrap}>
           <AppText variant="caption" color={article.color}>
@@ -41,7 +41,6 @@ export function EducationCard({ article, onPress, delay = 0 }: Props) {
 const styles = StyleSheet.create({
   card: { marginBottom: Spacing.md },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  emoji: { fontSize: 24 },
   textWrap: { flex: 1 },
   title: { marginTop: 2 },
   summary: { marginTop: 2 },

@@ -2,7 +2,6 @@ const { z } = require("zod");
 
 const {
   MENSTRUAL_RECORD_SOURCES,
-  MENSTRUAL_STATUS,
   SYMPTOM_OPTIONS,
   MOOD_OPTIONS,
   MIN_MANUAL_CYCLE_LENGTH,
@@ -29,7 +28,6 @@ const upsertRecordSchema = z.object({
   date: z.iso.date("date must be YYYY-MM-DD"),
   isPeriodDay: z.boolean().optional().default(false),
   isPeriodEnd: z.boolean().optional().default(false),
-  status: z.enum(MENSTRUAL_STATUS, { message: `status must be one of: ${MENSTRUAL_STATUS.join(", ")}` }).optional(),
   flowLevel: z.string().trim().min(1).max(40).optional(),
   symptoms: symptomsSchema,
   mood: moodSchema,
@@ -75,7 +73,6 @@ const batchRecordEntrySchema = z.object({
   // a *batch* log is, in practice, always "mark these days as period days".
   isPeriodDay: z.boolean().optional().default(true),
   isPeriodEnd: z.boolean().optional().default(false),
-  status: z.enum(MENSTRUAL_STATUS, { message: `status must be one of: ${MENSTRUAL_STATUS.join(", ")}` }).optional(),
   // Named `flow`, not `flowLevel`, in the batch request body — mapped onto the saved
   // record's `flowLevel` field by the controller, same underlying data either way.
   flow: z.string().trim().min(1).max(40).optional(),

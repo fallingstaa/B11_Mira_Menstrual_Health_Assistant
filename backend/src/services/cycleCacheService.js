@@ -2,6 +2,7 @@ const MenstrualRecord = require("../models/MenstrualRecord");
 const User = require("../models/User");
 const { daysBetween } = require("../utils/dateHelper");
 const { predictNextCycle } = require("./predictionService");
+const { MAX_MANUAL_PERIOD_LENGTH } = require("../utils/constants");
 
 // Matches the defaults on User.cycle in models/User.js — used whenever there isn't
 // enough history yet to average from (fewer than two logged periods).
@@ -9,70 +10,84 @@ const DEFAULT_CYCLE_LENGTH = 28;
 const DEFAULT_PERIOD_LENGTH = 5;
 
 /**
- * Groups a user's `isPeriodDay` records (sorted ascending) into contiguous date-range
- * "episodes" — one per logged period, regardless of how many separate check-ins/edits
- * built it up. Two records belong to the same episode iff they're exactly one calendar
- * day apart.
+ * Groups a user's `isPeriodDay` records (sorted ascending) into "episodes" — one per
+ * logged period, regardless of how many separate check-ins/edits built it up, or what
+ * order those edits happened in.
+ *
+ * An **explicit end day (`isPeriodEnd: true`) is the authoritative boundary** between
+ * one episode and the next — once hit, the very next record always starts a new
+ * episode, no matter how close in time. Until an episode gets an explicit end, any
+ * later record within MAX_MANUAL_PERIOD_LENGTH days of that episode's *start* still
+ * joins it (measured from the episode's start, not its last-seen day, so a few small
+ * gaps in a row can't chain together into something implausibly long).
+ *
+ * This used to require records to be exactly one calendar day apart to count as the
+ * same episode — which meant recording an end day before going back to fill in a day
+ * you'd skipped (e.g. logging the 12th, 13th, 14th, then jumping straight to the 16th
+ * as End day before ever entering the 15th) got misread as the 16th starting a brand
+ * new, separate period, badly corrupting averageCycleLength/nextPeriodStart until the
+ * gap was filled in. Anchoring "same episode" to the *end day marker* instead of *day
+ * adjacency* is both what the day-by-day UI already asks users to do (mark Period day
+ * vs. End day) and immune to the order/completeness those individual days get logged in.
  */
 function groupIntoEpisodes(records) {
   const episodes = [];
+  let current = null;
+
   for (const record of records) {
-    const last = episodes[episodes.length - 1];
-    if (last && daysBetween(last.end, record.date) === 1) {
-      last.end = record.date;
-      last.hasExplicitEnd = last.hasExplicitEnd || record.isPeriodEnd;
+    const joinsCurrent = current && !current.hasExplicitEnd && daysBetween(current.start, record.date) <= MAX_MANUAL_PERIOD_LENGTH;
+
+    if (joinsCurrent) {
+      current.end = record.date;
     } else {
-      episodes.push({ start: record.date, end: record.date, hasExplicitEnd: record.isPeriodEnd });
+      current = { start: record.date, end: record.date, hasExplicitEnd: false };
+      episodes.push(current);
     }
+
+    if (record.isPeriodEnd) current.hasExplicitEnd = true;
   }
+
   return episodes;
 }
 
 /**
- * Recomputes `User.cycle` (the denormalized prediction cache — see the comment on the
- * schema in models/User.js) from the user's actual MenstrualRecord history. Call this
- * after any write that could change that history (upsert/delete a record) — reads
- * (`GET /profile/me`, `GET /menstrual/prediction`) stay cheap because they just read
- * whatever this last computed, instead of re-deriving it on every request.
+ * Pure computation half of recomputeCycleCache below — given a user's sorted `isPeriodDay`
+ * records plus their manual onboarding seeds, returns the full `User.cycle` update object.
+ * Split out from the Mongo I/O specifically so this — the actual "given this record history,
+ * what should today's cache be" logic — is unit-testable without a database at all. See
+ * `cycleCacheService.test.js` for the regular/irregular/early/late/gap-in-logging cases this
+ * covers.
  *
- * Averages use *all* past episodes, not just the most recent couple — fine for now
- * given how little history a new-ish user has; swap for a recency-weighted average
- * once there's enough real data to justify it (same note predictionService.js already
- * has for the next-cycle math itself).
+ * Averages use *all* past episodes, not just the most recent couple — fine for now given how
+ * little history a new-ish user has; swap for a recency-weighted average once there's enough
+ * real data to justify it (same note predictionService.js already has for the next-cycle math
+ * itself). Worth flagging for anyone tracking a *sustained* cycle-length shift (e.g. a health
+ * change): every historical cycle still weighs equally forever, so the average adapts slowly.
  */
-async function recomputeCycleCache(userId) {
-  const [records, user] = await Promise.all([
-    MenstrualRecord.find({ userId, isPeriodDay: true }).sort({ date: 1 }),
-    // Only the manual onboarding seeds are needed here — see cycle-setup below and the
-    // schema comment on User.cycle.manualCycleLength/manualPeriodLength.
-    User.findById(userId).select("cycle.manualCycleLength cycle.manualPeriodLength"),
-  ]);
-
-  // Falls back to the manual onboarding answer (cycle-length-question.tsx, saved via
-  // PUT /api/menstrual/cycle-setup) whenever there isn't yet enough real history to
-  // compute a real average — only once that's exhausted too do we fall back to the
-  // hardcoded product default. Never the other way around: a manual answer never
-  // overrides real logged history (see the cycleLengths/completedLengths checks below).
-  const fallbackCycleLength = user?.cycle?.manualCycleLength ?? DEFAULT_CYCLE_LENGTH;
-  const fallbackPeriodLength = user?.cycle?.manualPeriodLength ?? DEFAULT_PERIOD_LENGTH;
+function computeCycleUpdate(records, manualCycleLength, manualPeriodLength) {
+  // Falls back to the manual onboarding answer (cycle-length-question.tsx /
+  // period-length-question.tsx, saved via PUT /api/menstrual/cycle-setup) whenever there
+  // isn't yet enough real history to compute a real average — only once that's exhausted too
+  // do we fall back to the hardcoded product default. Never the other way around: a manual
+  // answer never overrides real logged history (see the cycleLengths/completedLengths checks
+  // below) — this is the "only use the 28/5 default if there's genuinely no input at all" rule.
+  const fallbackCycleLength = manualCycleLength ?? DEFAULT_CYCLE_LENGTH;
+  const fallbackPeriodLength = manualPeriodLength ?? DEFAULT_PERIOD_LENGTH;
 
   if (records.length === 0) {
     // Every period day for this user was deleted/un-marked — fall back to the same
     // "nothing logged yet" state a brand-new account starts in (modulo any manual
     // estimate already on file), rather than leaving a stale cache behind.
-    await User.findByIdAndUpdate(userId, {
-      $set: {
-        "cycle.averageCycleLength": fallbackCycleLength,
-        "cycle.averagePeriodLength": fallbackPeriodLength,
-        "cycle.lastPeriodStart": null,
-        "cycle.lastPeriodEnd": null,
-        "cycle.nextPeriodStart": null,
-        "cycle.nextPeriodEnd": null,
-        "cycle.fertileWindowStart": null,
-        "cycle.fertileWindowEnd": null,
-      },
-    });
-    return;
+    return {
+      averageCycleLength: fallbackCycleLength,
+      averagePeriodLength: fallbackPeriodLength,
+      lastPeriodStart: null,
+      lastPeriodEnd: null,
+      nextPeriodStart: null,
+      nextPeriodEnd: null,
+      fertileWindowStart: null,
+      fertileWindowEnd: null,
+    };
   }
 
   const episodes = groupIntoEpisodes(records);
@@ -90,7 +105,10 @@ async function recomputeCycleCache(userId) {
     ? Math.round(completedLengths.reduce((sum, n) => sum + n, 0) / completedLengths.length)
     : fallbackPeriodLength;
 
-  // Cycle length: average gap between consecutive episode start dates.
+  // Cycle length: average gap between consecutive episode start dates. A brand-new episode
+  // (e.g. an early/unexpected period) immediately contributes its own real start-to-start gap
+  // here the moment it's logged — there's no special-casing needed for "early period": it's
+  // just one more (shorter) entry in this same average.
   const cycleLengths = [];
   for (let i = 1; i < episodes.length; i++) {
     cycleLengths.push(daysBetween(episodes[i - 1].start, episodes[i].start));
@@ -104,18 +122,47 @@ async function recomputeCycleCache(userId) {
 
   const prediction = predictNextCycle({ lastPeriodStart, averageCycleLength, averagePeriodLength });
 
+  return {
+    averageCycleLength,
+    averagePeriodLength,
+    lastPeriodStart,
+    lastPeriodEnd,
+    nextPeriodStart: prediction?.nextPeriodStart ?? null,
+    nextPeriodEnd: prediction?.nextPeriodEnd ?? null,
+    fertileWindowStart: prediction?.fertileWindowStart ?? null,
+    fertileWindowEnd: prediction?.fertileWindowEnd ?? null,
+  };
+}
+
+/**
+ * Recomputes `User.cycle` (the denormalized prediction cache — see the comment on the
+ * schema in models/User.js) from the user's actual MenstrualRecord history. Call this
+ * after any write that could change that history (upsert/delete a record) — reads
+ * (`GET /profile/me`, `GET /menstrual/prediction`) stay cheap because they just read
+ * whatever this last computed, instead of re-deriving it on every request.
+ */
+async function recomputeCycleCache(userId) {
+  const [records, user] = await Promise.all([
+    MenstrualRecord.find({ userId, isPeriodDay: true }).sort({ date: 1 }),
+    // Only the manual onboarding seeds are needed here — see cycle-setup below and the
+    // schema comment on User.cycle.manualCycleLength/manualPeriodLength.
+    User.findById(userId).select("cycle.manualCycleLength cycle.manualPeriodLength"),
+  ]);
+
+  const update = computeCycleUpdate(records, user?.cycle?.manualCycleLength, user?.cycle?.manualPeriodLength);
+
   await User.findByIdAndUpdate(userId, {
     $set: {
-      "cycle.averageCycleLength": averageCycleLength,
-      "cycle.averagePeriodLength": averagePeriodLength,
-      "cycle.lastPeriodStart": lastPeriodStart,
-      "cycle.lastPeriodEnd": lastPeriodEnd,
-      "cycle.nextPeriodStart": prediction?.nextPeriodStart ?? null,
-      "cycle.nextPeriodEnd": prediction?.nextPeriodEnd ?? null,
-      "cycle.fertileWindowStart": prediction?.fertileWindowStart ?? null,
-      "cycle.fertileWindowEnd": prediction?.fertileWindowEnd ?? null,
+      "cycle.averageCycleLength": update.averageCycleLength,
+      "cycle.averagePeriodLength": update.averagePeriodLength,
+      "cycle.lastPeriodStart": update.lastPeriodStart,
+      "cycle.lastPeriodEnd": update.lastPeriodEnd,
+      "cycle.nextPeriodStart": update.nextPeriodStart,
+      "cycle.nextPeriodEnd": update.nextPeriodEnd,
+      "cycle.fertileWindowStart": update.fertileWindowStart,
+      "cycle.fertileWindowEnd": update.fertileWindowEnd,
     },
   });
 }
 
-module.exports = { recomputeCycleCache };
+module.exports = { recomputeCycleCache, computeCycleUpdate, groupIntoEpisodes };

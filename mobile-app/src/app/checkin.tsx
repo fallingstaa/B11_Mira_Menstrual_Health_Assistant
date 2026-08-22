@@ -1,15 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 
-import { AppText } from '@/components/mira/app-text';
 import { Button } from '@/components/mira/button';
 import { Card } from '@/components/mira/card';
-import { Chip } from '@/components/mira/chip';
 import { CollapsibleChipField } from '@/components/mira/collapsible-chip-field';
-import { ConfirmChipGroup } from '@/components/mira/confirm-chip-group';
-import { FlowLevelPicker } from '@/components/mira/flow-level-picker';
 import { ModalHeader } from '@/components/mira/modal-header';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { SuccessOverlay } from '@/components/mira/success-overlay';
@@ -19,49 +15,27 @@ import { useAppState } from '@/context/app-state';
 import { dateKey, formatShort } from '@/utils/date';
 
 /**
- * Home's "Check in now" — logs today straight into the same shared state Calendar reads from
- * (`useAppState`), pre-filled if today was already touched elsewhere. Saving here always calls
- * the same `markPeriodDay`/`updatePeriodDayEntry`/`setPeriodEndDay` Calendar's own day editor
- * uses, so today shows up in Calendar's "Recorded Days" immediately — there's no separate,
- * Home-only copy of this data to fall out of sync.
+ * Home's "Check in now" — a quick, always-available "how are you feeling today?" log.
+ * Deliberately symptoms/mood only: it used to also offer the same Period day/Spotting/End day
+ * choice as Calendar's day editor, which meant two different screens could both claim to be
+ * "where you record your period," and it was easy to end up here meaning to log a headache and
+ * accidentally mark (or un-mark) today as a period day instead. Calendar is the only place that
+ * changes period-day/end-day/flow status now — this never touches any of that, whichever way
+ * today's already set.
  *
- * "Period status" is now the exact same 3-way choice as PeriodDayEditor's "Day type" (Period
- * day / Spotting / End day) instead of its own separate on/spotting/off wording — same
- * derive-from-Flow trick too: picking "Spotting" here sets Flow to Spotting, and picking
- * Spotting down in Flow reflects back up here, so they can't disagree with each other.
+ * If today's already a period day (marked via Calendar), saving here updates that same day's
+ * symptoms/mood — it shows up in Calendar's day editor immediately, no separate copy. If today
+ * isn't a period day, this still saves a real record for today (so symptoms/mood between periods
+ * aren't lost), just with isPeriodDay left false — Calendar remains the only way that ever becomes true.
  */
 export default function CheckinScreen() {
-  const { periodEntries, markPeriodDay, setPeriodEndDay, updatePeriodDayEntry } = useAppState();
+  const { periodEntries, updatePeriodDayEntry, commitDays } = useAppState();
   const [today] = useState(() => new Date());
   const existingEntry = periodEntries[dateKey(today)];
 
-  // Nothing pre-selects an answer for the user — same principle as PeriodDayEditor's "Day
-  // type": nothing should read as already-chosen before it's actually tapped. Already-expanded
-  // ("confirmed") if today already has a real entry, since reopening existing data isn't a
-  // fresh, unmade choice.
-  const [dayTypeTouched, setDayTypeTouched] = useState(!!existingEntry);
-  const [isEnd, setIsEnd] = useState(existingEntry?.isEnd ?? false);
-  const [flow, setFlow] = useState(existingEntry?.flow ?? '');
   const [symptoms, setSymptoms] = useState<string[]>(existingEntry?.symptoms ?? []);
   const [mood, setMood] = useState<string[]>(existingEntry?.mood ?? []);
   const [saved, setSaved] = useState(false);
-
-  const dayType: 'period' | 'spotting' | 'end' = isEnd ? 'end' : flow === 'spotting' ? 'spotting' : 'period';
-
-  const selectPeriodDay = () => {
-    setIsEnd(false);
-    if (flow === 'spotting') setFlow('');
-    setDayTypeTouched(true);
-  };
-  const selectSpotting = () => {
-    setIsEnd(false);
-    setFlow('spotting');
-    setDayTypeTouched(true);
-  };
-  const selectEndDay = () => {
-    setIsEnd(true);
-    setDayTypeTouched(true);
-  };
 
   const toggleSymptom = (key: string) => {
     setSymptoms((prev) => (prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]));
@@ -78,21 +52,19 @@ export default function CheckinScreen() {
   }, [saved]);
 
   const handleSave = () => {
-    markPeriodDay(today);
-    updatePeriodDayEntry(today, {
-      flow: flow || undefined,
-      symptoms,
-      mood,
-    });
-    if (isEnd) {
-      // Enforces "at most one end day" across every recorded day, same as everywhere else this
-      // is set — a plain patch here wouldn't un-flag whichever day was previously the end.
-      setPeriodEndDay(today);
-    } else if (existingEntry?.isEnd) {
-      // Was previously today's flagged end day, user moved off it this session — clear it.
-      updatePeriodDayEntry(today, { isEnd: false });
+    // Only touches symptoms/mood on the existing entry (if today's already a period day) —
+    // never its isEnd/flow status, and never creates a new period-day entry if today wasn't one.
+    if (existingEntry) {
+      updatePeriodDayEntry(today, { symptoms, mood });
     }
     setSaved(true);
+
+    commitDays(
+      [{ date: today, isPeriodDay: !!existingEntry, isEnd: existingEntry?.isEnd, flow: existingEntry?.flow, symptoms, mood }],
+      'checkin',
+    ).catch((err) => {
+      Alert.alert("Couldn't save to the server", err instanceof Error ? err.message : 'Please try again.');
+    });
   };
 
   return (
@@ -106,26 +78,6 @@ export default function CheckinScreen() {
         />
       }>
       <ModalHeader title="Daily Check-in" subtitle={`Today, ${formatShort(today)} · takes a few seconds`} />
-
-      <Card style={styles.card}>
-        <ConfirmChipGroup label="PERIOD STATUS" confirmed={dayTypeTouched}>
-          {/* Fixed 3-way row — each chip is flex: 1, so they always divide one line evenly
-              instead of wrapping or needing a scroll. Same 3 options, same wording, as
-              PeriodDayEditor's "Day type" in Calendar. */}
-          <View style={styles.fitRow}>
-            <Chip label="Period day" style={styles.fitChip} selected={dayTypeTouched && dayType === 'period'} onPress={selectPeriodDay} />
-            <Chip label="Spotting" style={styles.fitChip} selected={dayTypeTouched && dayType === 'spotting'} onPress={selectSpotting} />
-            <Chip label="End day" style={styles.fitChip} color={Colors.primaryDark} selected={dayTypeTouched && dayType === 'end'} onPress={selectEndDay} />
-          </View>
-        </ConfirmChipGroup>
-      </Card>
-
-      <Card style={styles.card}>
-        <AppText variant="bodyMedium" style={styles.label}>
-          Flow · optional
-        </AppText>
-        <FlowLevelPicker value={flow} onChange={setFlow} />
-      </Card>
 
       <Card style={styles.card}>
         <CollapsibleChipField label="Symptoms" options={symptomOptions} selectedKeys={symptoms} onToggle={toggleSymptom} />
@@ -142,8 +94,4 @@ export default function CheckinScreen() {
 
 const styles = StyleSheet.create({
   card: { marginBottom: Spacing.lg },
-  label: { marginBottom: Spacing.md },
-  // Period status's fixed 3-option row — see Chip's `style` prop note.
-  fitRow: { flexDirection: 'row', gap: Spacing.xs },
-  fitChip: { flex: 1, paddingHorizontal: Spacing.sm },
 });

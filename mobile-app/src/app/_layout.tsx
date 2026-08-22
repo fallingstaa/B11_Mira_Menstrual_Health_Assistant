@@ -49,6 +49,7 @@ export default function RootLayout() {
               <Stack.Screen name="checkin" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="prediction" />
               <Stack.Screen name="notifications" />
+              <Stack.Screen name="checkin-history" />
               <Stack.Screen name="article/[id]" />
             </Stack>
             <DevNotificationTester />

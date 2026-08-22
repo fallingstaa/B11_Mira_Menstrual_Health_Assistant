@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const { MENSTRUAL_RECORD_SOURCES, MENSTRUAL_STATUS, SYMPTOM_OPTIONS, MOOD_OPTIONS } = require("../utils/constants");
+const { MENSTRUAL_RECORD_SOURCES, SYMPTOM_OPTIONS, MOOD_OPTIONS } = require("../utils/constants");
 
 /**
  * One document per user per logged calendar day — matches the app's own
@@ -13,6 +13,13 @@ const { MENSTRUAL_RECORD_SOURCES, MENSTRUAL_STATUS, SYMPTOM_OPTIONS, MOOD_OPTION
  *
  * mood is an array, not a single value — a day can be tagged with more than one mood
  * at once (e.g. "Calm" and "Anxious" together), same multi-select shape as symptoms.
+ *
+ * No separate "status" field — the app's Day Type redesign (Period day / Spotting /
+ * End day) replaced what a 3-way on/spotting/off status used to represent: Spotting is
+ * just flowLevel: "spotting", and End day is isPeriodEnd, so a standalone status would
+ * only ever duplicate one of those two rather than mean anything of its own. (Removed
+ * 2026-08-20 — was still on the schema/API from before the redesign, but the UI never
+ * sent anything for it.)
  */
 const menstrualRecordSchema = new mongoose.Schema(
   {
@@ -24,7 +31,6 @@ const menstrualRecordSchema = new mongoose.Schema(
     // not the schema (mirrors the "isEnd" comment in the frontend's PeriodDayEntry).
     isPeriodEnd: { type: Boolean, default: false },
 
-    status: { type: String, enum: MENSTRUAL_STATUS, default: null },
     flowLevel: { type: String, default: null },
     symptoms: { type: [{ type: String, enum: SYMPTOM_OPTIONS }], default: [] },
     mood: { type: [{ type: String, enum: MOOD_OPTIONS }], default: [] },

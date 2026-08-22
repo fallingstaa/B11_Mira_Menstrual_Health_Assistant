@@ -1,9 +1,10 @@
 const express = require("express");
 
 const authMiddleware = require("../middleware/authMiddleware");
-const { getMe, updateMe, deleteMe, savePushToken, exportData } = require("../controllers/profileController");
+const { getMe, updateMe, deleteMe, savePushToken, changeEmail, uploadAvatar, getAvatar, deleteAvatar, exportData } = require("../controllers/profileController");
 const validate = require("../middleware/validate");
-const { updateProfileSchema, pushTokenSchema } = require("../validators/profileValidators");
+const uploadAvatarPhoto = require("../middleware/uploadAvatar");
+const { updateProfileSchema, pushTokenSchema, changeEmailSchema } = require("../validators/profileValidators");
 
 const router = express.Router();
 
@@ -60,6 +61,131 @@ router.get("/me", getMe);
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.put("/me", validate(updateProfileSchema), updateMe);
+
+/**
+ * @openapi
+ * /api/profile/email:
+ *   put:
+ *     tags: [Profile]
+ *     summary: Change the signed-in user's login email
+ *     description: >
+ *       A separate endpoint from `PUT /api/profile/me` — changing email touches Firebase Auth (the actual login
+ *       identity), not just this Mongo profile doc, so it needs its own validation/error handling. Takes effect
+ *       immediately; there's no verification-link step yet (same gap as `POST /api/auth/forgot-password` — Firebase
+ *       generates links, nothing sends them).
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string, format: email, example: "new-address@example.com" }
+ *     responses:
+ *       200:
+ *         description: Email changed (or unchanged, if it matched the current one already).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string, example: success }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     userId: { type: string }
+ *                     email: { type: string, format: email }
+ *       400:
+ *         description: email missing/not a valid address.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       409:
+ *         description: That email is already in use by another account (Mongo or Firebase).
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+ */
+router.put("/email", validate(changeEmailSchema), changeEmail);
+
+/**
+ * @openapi
+ * /api/profile/avatar:
+ *   post:
+ *     tags: [Profile]
+ *     summary: Upload/replace the signed-in user's profile photo
+ *     description: >
+ *       Stores the photo in Firebase Storage and points `profile.avatarUrl` at this same API's own
+ *       `GET /api/profile/avatar` — not a raw Google Cloud Storage URL (see profileController.js's `uploadAvatar`
+ *       for why: bucket-ACL public access can fail on newer buckets, and signed URLs cap out at 7 days). A new
+ *       upload overwrites the previous photo in place — there's only ever one avatar object per user, no history.
+ *       Max 5MB, JPEG/PNG/WebP only.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [photo]
+ *             properties:
+ *               photo: { type: string, format: binary }
+ *     responses:
+ *       200:
+ *         description: Uploaded. `avatarUrl` is now this API's own avatar endpoint.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string, example: success }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     avatarUrl: { type: string, format: uri }
+ *       400:
+ *         description: No `photo` field sent, wrong file type, or over the 5MB cap.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.post("/avatar", uploadAvatarPhoto, uploadAvatar);
+
+/**
+ * @openapi
+ * /api/profile/avatar:
+ *   get:
+ *     tags: [Profile]
+ *     summary: Get the signed-in user's profile photo
+ *     description: Streams the raw image bytes (whatever Content-Type it was uploaded as) — this is what `profile.avatarUrl` points at, meant to be loaded directly (e.g. as an `<Image>` source), not JSON.
+ *     responses:
+ *       200:
+ *         description: The image.
+ *         content:
+ *           image/jpeg: { schema: { type: string, format: binary } }
+ *           image/png: { schema: { type: string, format: binary } }
+ *           image/webp: { schema: { type: string, format: binary } }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         description: No avatar has been uploaded yet.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+ */
+router.get("/avatar", getAvatar);
+
+/**
+ * @openapi
+ * /api/profile/avatar:
+ *   delete:
+ *     tags: [Profile]
+ *     summary: Remove the signed-in user's profile photo
+ *     description: Deletes the Storage object and clears `profile.avatarUrl` together, so the two can't drift out of sync.
+ *     responses:
+ *       200:
+ *         description: Removed (or there was nothing to remove — this endpoint does not 404 on an already-clear avatar).
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/MessageResponse' } } }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.delete("/avatar", deleteAvatar);
 
 /**
  * @openapi

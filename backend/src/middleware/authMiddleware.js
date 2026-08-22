@@ -20,6 +20,19 @@ async function authMiddleware(req, res, next) {
 
   try {
     const decoded = await getAuth(firebaseApp).verifyIdToken(token);
+
+    // Blocks everything behind this middleware — profile, tracking, AI, reminders —
+    // for an account whose email was never confirmed as reachable. `POST /api/auth/
+    // register` and `/login` deliberately do NOT sit behind this middleware (see
+    // authRoutes.js), so signup/sync itself still works for an unverified account;
+    // this only stops that account from actually *using* the app until it's verified,
+    // per Security Design's "demonstrate secure login" requirement. `code` lets the
+    // client branch on this specific case (route to a "verify your email" screen)
+    // instead of showing it as a generic auth failure.
+    if (!decoded.email_verified) {
+      return error(res, "Please verify your email before continuing.", 403, "EMAIL_NOT_VERIFIED");
+    }
+
     const user = await User.findOne({ firebaseUid: decoded.uid });
 
     if (!user) {

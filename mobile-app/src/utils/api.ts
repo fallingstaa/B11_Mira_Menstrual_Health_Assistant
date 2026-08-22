@@ -1,9 +1,25 @@
+import { router } from 'expo-router';
+
 import { auth } from '@/config/firebase';
 
 // Where the Express backend is reachable from this device. "localhost" only works for
 // web/iOS-simulator — a physical device via Expo Go needs the dev machine's LAN IP
 // instead (e.g. http://192.168.1.23:5000), set via EXPO_PUBLIC_API_URL in .env.
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000';
+
+/**
+ * Thrown for a { status: "error" } response — same as a plain Error, but keeps the
+ * backend's machine-readable `code` (see backend/src/utils/responseHandler.js) around
+ * so a caller can branch on *which* error this is instead of matching on `message`
+ * text, which is free to change wording without warning.
+ */
+export class ApiError extends Error {
+  code?: string;
+  constructor(message: string, code?: string) {
+    super(message);
+    this.code = code;
+  }
+}
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -68,7 +84,16 @@ export async function apiRequest<T = unknown>(
 
   if (!res.ok || json.status === 'error') {
     log(`[api] ✗ ${method} ${url} →`, res.status, json);
-    throw new Error(json.message ?? `Request failed (${res.status})`);
+    // Global safety net: whichever screen happened to make the call that first hit an
+    // unverified account, send it to the verify-email screen instead of just showing
+    // "Please verify your email" as an inline form error the user has no way to act on.
+    if (json.code === 'EMAIL_NOT_VERIFIED') {
+      // Cast needed until expo-router's generated route types (.expo/types/router.d.ts)
+      // pick up this new screen on the next `expo start`/`expo export` — same reason
+      // verify-email.tsx casts its own dynamic `destination` param.
+      router.replace('/verify-email' as never);
+    }
+    throw new ApiError(json.message ?? `Request failed (${res.status})`, json.code);
   }
 
   console.log(`[api] ✓ ${method} ${url} →`, res.status);

@@ -59,9 +59,11 @@ export default function RegisterScreen() {
     try {
       await register(name.trim(), email.trim(), password);
       setUserAge(parsedAge);
-      // Every brand-new sign-up sees Cycle Basics 101 before anything else. Returning users
-      // (login.tsx) skip straight to Home, but can reopen the same guide any time from there.
-      router.replace('/cycle-basics');
+      // A brand-new account is never verified yet — gate on verify-email first (see
+      // authMiddleware.js's EMAIL_NOT_VERIFIED check). Cycle Basics 101 is *after* that,
+      // passed along as `next` so verify-email knows where to send a freshly-verified
+      // sign-up instead of the generic Home fallback it uses otherwise.
+      router.replace({ pathname: '/verify-email' as never, params: { next: '/cycle-basics' } });
     } catch (err) {
       setError(registerErrorMessage(err));
     } finally {

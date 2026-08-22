@@ -2,6 +2,7 @@ import { createContext, ReactNode, useContext, useEffect, useState } from 'react
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
@@ -19,6 +20,10 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  /** Re-sends the verification link to the signed-in user's own address. */
+  resendVerificationEmail: () => Promise<void>;
+  /** Re-fetches the signed-in user from Firebase and reports whether their email is now verified — Firebase only knows this as of the last sign-in/reload, not live. */
+  refreshEmailVerified: () => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -59,6 +64,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('[auth] ✗ backend /auth/register failed after Firebase succeeded:', err);
       throw err;
     }
+
+    // Best-effort — a failed send here shouldn't fail registration itself; the
+    // verify-email screen has its own "resend" button for exactly this case.
+    try {
+      await sendEmailVerification(credential.user);
+      console.log('[auth] ✓ verification email sent to', credential.user.email);
+    } catch (err) {
+      console.warn('[auth] ✗ sendEmailVerification failed (non-fatal, user can resend):', err);
+    }
   };
 
   const login = async (email: string, password: string) => {
@@ -89,8 +103,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // there's no server round-trip needed for this particular flow.
   const resetPassword = (email: string) => sendPasswordResetEmail(auth, email);
 
+  const resendVerificationEmail = async () => {
+    if (!auth.currentUser) throw new Error('Not signed in');
+    await sendEmailVerification(auth.currentUser);
+  };
+
+  // Firebase's own `user.emailVerified` is a snapshot from the last sign-in/reload —
+  // it doesn't update itself just because the user clicked the link in another tab.
+  // reload() re-fetches the account from Firebase so this reflects reality right now.
+  const refreshEmailVerified = async () => {
+    if (!auth.currentUser) return false;
+    await auth.currentUser.reload();
+    const verified = auth.currentUser.emailVerified;
+
+    // Critical: reload() only updates this *local* flag — it does NOT replace the
+    // actual ID token every apiRequest() call sends as the Authorization header. That
+    // token has email_verified baked into it as of whenever it was issued (up to ~1hr
+    // ago, before this user verified), and Firebase keeps reusing it as-is until it
+    // naturally expires unless force-refreshed. Without this, the app would report
+    // "verified!" and navigate onward, then immediately bounce right back to
+    // verify-email the moment any screen makes an API call, since the backend would
+    // still be reading the old, stale, unverified token — the exact redirect loop this
+    // fixes.
+    if (verified) await auth.currentUser.getIdToken(true);
+
+    return verified;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, initializing, register, login, logout, resetPassword }}>
+    <AuthContext.Provider
+      value={{ user, initializing, register, login, logout, resetPassword, resendVerificationEmail, refreshEmailVerified }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
 import { useAuth } from '@/context/auth-context';
-import { apiRequest } from '@/utils/api';
+import { ApiError, apiRequest } from '@/utils/api';
 import { addDays, dateKey, daysBetween, isoDate, parseIsoDate } from '@/utils/date';
 import { syncPeriodNotifications } from '@/utils/notifications';
 
@@ -121,6 +121,15 @@ type AppStateValue = {
    * before real history arrives (Home) should gate on this.
    */
   hydrated: boolean;
+  /**
+   * Re-runs the backend hydration load without needing `user` itself to change. Needed
+   * for exactly one case: a freshly-registered account hydrates *before* email
+   * verification is possible (see the effect below's EMAIL_NOT_VERIFIED handling), so
+   * nothing before then can retry it. verify-email.tsx calls this the moment the user
+   * confirms they've verified, so Home/Calendar show real data immediately instead of
+   * only picking it up on next app launch.
+   */
+  refreshHydration: () => void;
   /** Captured once at registration — lets later logic (tips, defaults) branch on teen vs adult. */
   userAge: number | null;
   setUserAge: (age: number) => void;
@@ -204,6 +213,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [firstQuestionAsked, setFirstQuestionAsked] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  // Bumped by refreshHydration() to force the effect below to re-run against the same
+  // `user` — see that function's own doc comment on AppStateValue for why plain `user`
+  // isn't enough on its own.
+  const [hydrationTrigger, setHydrationTrigger] = useState(0);
   const [periodEntries, setPeriodEntries] = useState<Record<string, PeriodDayEntry>>({});
   const [userAge, setUserAgeState] = useState<number | null>(null);
   const [isBeginner, setIsBeginnerState] = useState(false);
@@ -287,6 +300,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
             continue;
           }
+          // Expected, not a bug: a freshly-registered account is signed in to Firebase
+          // (so `user` is set and this effect fires) but hasn't clicked the email
+          // verification link yet, so authMiddleware.js rejects every request with this
+          // until they do. Retrying won't help within this mount's lifetime — only
+          // verify-email.tsx's refreshHydration() call, once they've actually verified,
+          // will. A plain console.log (not .error) so this expected, common state
+          // doesn't pop LogBox's red "crash" overlay on every fresh sign-up.
+          if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
+            console.log('[app-state] skipping hydration — email not verified yet');
+            break;
+          }
           // Backend unreachable, or genuinely out of retries — fall back to starting from a
           // blank local session rather than blocking the app on it. Whatever the user enters
           // this session still works locally; commitDays below will simply keep failing to
@@ -302,7 +326,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, hydrationTrigger]);
 
   const streaks = useMemo(() => getPeriodStreaks(periodEntries), [periodEntries]);
 
@@ -421,6 +445,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       firstQuestionAsked,
       markFirstQuestionAsked: () => setFirstQuestionAsked(true),
       hydrated,
+      refreshHydration: () => setHydrationTrigger((n) => n + 1),
       userAge,
       setUserAge: (age: number) => setUserAgeState(age),
       isBeginner,

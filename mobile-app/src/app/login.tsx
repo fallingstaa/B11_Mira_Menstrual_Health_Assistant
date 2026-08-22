@@ -10,6 +10,7 @@ import { MascotMini } from '@/components/mira/mascot';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { SocialButton } from '@/components/mira/social-button';
 import { TextField } from '@/components/mira/text-field';
+import { auth } from '@/config/firebase';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 
@@ -37,6 +38,14 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(email.trim(), password);
+      // An old account that registered before email verification was required, or one
+      // that just never clicked the link, still needs to clear that gate before Home —
+      // any protected API call would bounce it there anyway (see api.ts), but catching
+      // it here avoids a flash of Home before that redirect kicks in.
+      if (!auth.currentUser?.emailVerified) {
+        router.replace('/verify-email' as never);
+        return;
+      }
       // Cycle Basics 101 only auto-shows on brand-new sign-up (register.tsx) — a returning user
       // logging in goes straight to Home, and can reopen the guide any time from there.
       router.replace('/(tabs)/home');

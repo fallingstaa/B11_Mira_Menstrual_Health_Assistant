@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { AppText } from '@/components/mira/app-text';
@@ -10,6 +10,7 @@ import { Card } from '@/components/mira/card';
 import { CycleLengthAnswer, CycleLengthQuestion, DEFAULT_CYCLE_LENGTH } from '@/components/mira/cycle-length-question';
 import { PeriodDayEditor } from '@/components/mira/period-day-editor';
 import { PeriodEntriesSummary } from '@/components/mira/period-entries-summary';
+import { DEFAULT_PERIOD_LENGTH, PeriodLengthAnswer, PeriodLengthQuestion } from '@/components/mira/period-length-question';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { ScreenHeader } from '@/components/mira/screen-header';
 import { SuccessOverlay } from '@/components/mira/success-overlay';
@@ -25,8 +26,15 @@ import { dateKey, formatShort, getMonthGrid, isSameDay, monthLabel, WEEKDAY_LABE
  * is the end date).
  */
 export default function RecordFirstPeriodScreen() {
-  const { periodEntries, togglePeriodDay, setPeriodEndDay, updatePeriodDayEntry, setAverageCycleLength } =
-    useAppState();
+  const {
+    periodEntries,
+    togglePeriodDay,
+    setPeriodEndDay,
+    updatePeriodDayEntry,
+    setAverageCycleLength,
+    setAveragePeriodDuration,
+    commitDays,
+  } = useAppState();
   // The real device date, not the app's fixed demo date — so this screen reflects "today" whenever it's actually opened.
   const [today] = useState(() => new Date());
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -35,10 +43,12 @@ export default function RecordFirstPeriodScreen() {
   const [successMessage, setSuccessMessage] = useState('Period recorded!');
   const [knowsCycleLength, setKnowsCycleLength] = useState<CycleLengthAnswer>(null);
   const [cycleLength, setCycleLength] = useState(DEFAULT_CYCLE_LENGTH);
-  // Shown immediately on entering this screen from "I'm on my period right now" — a single quick
-  // question, gone the moment it's answered or skipped. The calendar underneath (tap days to
+  const [knowsPeriodLength, setKnowsPeriodLength] = useState<PeriodLengthAnswer>(null);
+  const [periodLength, setPeriodLength] = useState(DEFAULT_PERIOD_LENGTH);
+  // Shown immediately on entering this screen from "I'm on my period right now" — two quick
+  // questions, gone the moment they're answered or skipped. The calendar underneath (tap days to
   // mark them, same as always) is what actually records anything — this popup only ever touches
-  // the cycle length input, never a date.
+  // the cycle/period length inputs, never a date.
   const [showCycleLengthPopup, setShowCycleLengthPopup] = useState(true);
 
   const grid = useMemo(() => getMonthGrid(cursor.getFullYear(), cursor.getMonth()), [cursor]);
@@ -90,12 +100,22 @@ export default function RecordFirstPeriodScreen() {
   const finish = (message: string) => {
     setSuccessMessage(message);
     setSaved(true);
+
+    // Syncs every day marked this session in one batch, each with whatever flow/symptoms/mood/
+    // end-day details it individually has (unlike Calendar's batch-backfill or record.tsx's
+    // range, which apply one shared set of details to every date) — this screen lets each day
+    // be edited independently via the PeriodDayEditor below, so a uniform patch would lose that.
+    if (markedCount > 0) {
+      commitDays(Object.values(periodEntries), 'record_first_period').catch((err) => {
+        Alert.alert("Couldn't save to the server", err instanceof Error ? err.message : 'Please try again.');
+      });
+    }
   };
 
   /**
-   * Closes the cycle-length popup. "Skip" leaves averageCycleLength untouched (the 28-day
-   * default, unless real history has already overridden it) without even looking at whatever
-   * was selected; "Save" applies the answer if one was actually given. Either way this is the
+   * Closes the cycle/period-length popup. "Skip" leaves both averages untouched (the 28/5-day
+   * defaults, unless real history has already overridden them) without even looking at whatever
+   * was selected; "Save" applies each answer that was actually given. Either way this is the
    * whole interaction — closing it hands off straight to the calendar below, tap-to-record as
    * usual. Applying a length instantly updates nextPeriodStartDate on Home and the on-device
    * reminder schedule — see context/app-state.tsx.
@@ -103,6 +123,9 @@ export default function RecordFirstPeriodScreen() {
   const closeCycleLengthPopup = (apply: boolean) => {
     if (apply && knowsCycleLength) {
       setAverageCycleLength(knowsCycleLength === 'yes' ? cycleLength : DEFAULT_CYCLE_LENGTH);
+    }
+    if (apply && knowsPeriodLength) {
+      setAveragePeriodDuration(knowsPeriodLength === 'yes' ? periodLength : DEFAULT_PERIOD_LENGTH);
     }
     setShowCycleLengthPopup(false);
   };
@@ -265,7 +288,7 @@ export default function RecordFirstPeriodScreen() {
           <View style={[styles.popupSheet, Shadow.raised]}>
             <View style={styles.popupHandle} />
             <View style={styles.popupHeaderRow}>
-              <AppText variant="h2">Cycle Length</AppText>
+              <AppText variant="h2">Cycle & Period Length</AppText>
               <Pressable onPress={() => closeCycleLengthPopup(false)} hitSlop={8}>
                 <AppText variant="bodyMedium" color={Colors.textMuted}>
                   Skip
@@ -273,14 +296,25 @@ export default function RecordFirstPeriodScreen() {
               </Pressable>
             </View>
 
-            <CycleLengthQuestion
-              answer={knowsCycleLength}
-              onAnswerChange={setKnowsCycleLength}
-              cycleLength={cycleLength}
-              onCycleLengthChange={setCycleLength}
-            />
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.popupScroll}>
+              <CycleLengthQuestion
+                answer={knowsCycleLength}
+                onAnswerChange={setKnowsCycleLength}
+                cycleLength={cycleLength}
+                onCycleLengthChange={setCycleLength}
+              />
 
-            <Button label="Save & Continue" onPress={() => closeCycleLengthPopup(true)} style={styles.popupButton} />
+              <View style={styles.popupDivider} />
+
+              <PeriodLengthQuestion
+                answer={knowsPeriodLength}
+                onAnswerChange={setKnowsPeriodLength}
+                periodLength={periodLength}
+                onPeriodLengthChange={setPeriodLength}
+              />
+
+              <Button label="Save & Continue" onPress={() => closeCycleLengthPopup(true)} style={styles.popupButton} />
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -368,11 +402,13 @@ const styles = StyleSheet.create({
   footerCaption: { marginTop: Spacing.sm },
   popupOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: Colors.overlay },
   popupSheet: {
+    // Two questions now, not one — bounded so a smaller device gets a scrollable sheet
+    // (popupScroll below) instead of the second question/button running off-screen.
+    maxHeight: '85%',
     backgroundColor: Colors.surface,
     borderTopLeftRadius: Radius.xl,
     borderTopRightRadius: Radius.xl,
     padding: Spacing.xl,
-    paddingBottom: Spacing.xxxl,
   },
   popupHandle: {
     width: 40,
@@ -388,5 +424,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: Spacing.xl,
   },
+  popupScroll: { paddingBottom: Spacing.xxxl },
+  popupDivider: { height: 1, backgroundColor: Colors.border, marginVertical: Spacing.xl },
   popupButton: { marginTop: Spacing.md },
 });

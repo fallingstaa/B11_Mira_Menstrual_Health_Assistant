@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, TextInput } from 'react-native';
+import { Alert, StyleSheet, TextInput } from 'react-native';
 
 import { AppText } from '@/components/mira/app-text';
 import { Button } from '@/components/mira/button';
@@ -15,6 +15,7 @@ import { SuccessOverlay } from '@/components/mira/success-overlay';
 import { moodOptions, symptomOptions } from '@/constants/mock-data';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
+import { eachDayInRange, isSameDay } from '@/utils/date';
 
 /**
  * Home's "Record Period" quick action (once a first period already exists) — logs a new
@@ -28,7 +29,7 @@ import { useAppState } from '@/context/app-state';
  * it's waiting on.
  */
 export default function RecordScreen() {
-  const { markPeriodDay, setPeriodEndDay, updatePeriodDayEntry } = useAppState();
+  const { markPeriodDay, setPeriodEndDay, updatePeriodDayEntry, commitDays } = useAppState();
   const [today] = useState(() => new Date());
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
@@ -56,8 +57,8 @@ export default function RecordScreen() {
   const handleRecord = () => {
     const rangeStart = endDate < startDate ? endDate : startDate;
     const rangeEnd = endDate < startDate ? startDate : endDate;
-    for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
-      const day = new Date(d);
+    const days = eachDayInRange(rangeStart, rangeEnd);
+    days.forEach((day) => {
       markPeriodDay(day);
       updatePeriodDayEntry(day, {
         flow: flow || undefined,
@@ -65,9 +66,23 @@ export default function RecordScreen() {
         mood,
         notes: notes.trim() || undefined,
       });
-    }
+    });
     setPeriodEndDay(rangeEnd);
     setSaved(true);
+
+    commitDays(
+      days.map((day) => ({
+        date: day,
+        isEnd: isSameDay(day, rangeEnd),
+        flow: flow || undefined,
+        symptoms,
+        mood,
+        notes: notes.trim() || undefined,
+      })),
+      'record',
+    ).catch((err) => {
+      Alert.alert("Couldn't save to the server", err instanceof Error ? err.message : 'Please try again.');
+    });
   };
 
   return (

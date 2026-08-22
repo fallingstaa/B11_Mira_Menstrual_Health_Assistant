@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
@@ -12,15 +13,28 @@ import { Dot } from '@/components/mira/chip';
 import { PeriodDayEditor } from '@/components/mira/period-day-editor';
 import { PeriodEntriesSummary } from '@/components/mira/period-entries-summary';
 import { ScreenContainer } from '@/components/mira/screen-container';
-import { cycleStats, pastPeriods } from '@/constants/mock-data';
+// pastPeriods is still this screen's placeholder "demo history" for a brand-new account with
+// nothing logged yet (see hasRealEntries below) — cycleStats is gone, see the prediction state
+// below for why.
+import { pastPeriods } from '@/constants/mock-data';
 import { Colors, Radius, Shadow, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
-import { dateKey, getMonthGrid, isPastMonth, isSameDay, isSameMonth, isWithinRange, monthLabel, WEEKDAY_LABELS } from '@/utils/date';
+import { apiRequest } from '@/utils/api';
+import { dateKey, getMonthGrid, isPastMonth, isSameDay, isSameMonth, isWithinRange, monthLabel, parseIsoDate, WEEKDAY_LABELS } from '@/utils/date';
 
 type DayStatus = 'period' | 'period-end' | 'predicted' | 'fertile' | 'none';
 
+/** The subset of `GET /api/menstrual/prediction` this screen needs for the "Estimated"/"Fertile
+ *  window" day highlighting — both null until a first period's ever been logged. */
+type CalendarPrediction = {
+  nextPeriodStart: string | null;
+  nextPeriodEnd: string | null;
+  fertileWindowStart: string | null;
+  fertileWindowEnd: string | null;
+};
+
 export default function CalendarScreen() {
-  const { periodEntries, togglePeriodDay, setPeriodEndDay, updatePeriodDayEntry } = useAppState();
+  const { periodEntries, togglePeriodDay, setPeriodEndDay, updatePeriodDayEntry, commitDays } = useAppState();
   // The real device date, not the app's fixed demo date — so "Today" always lands on the actual day.
   const [today] = useState(() => new Date());
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -35,18 +49,42 @@ export default function CalendarScreen() {
   // silently spans two different months' worth of taps.
   const [multiSelectedDays, setMultiSelectedDays] = useState<Date[]>([]);
   const [batchModalVisible, setBatchModalVisible] = useState(false);
+  // "Estimated period" / "Fertile window" highlighting used to come from mock cycleStats, fixed
+  // at Aug 21-25 / Aug 6-10 regardless of what was actually recorded — this fetches the real
+  // prediction instead, same GET /menstrual/prediction Home and the Prediction Details screen
+  // already use, refetched on every focus so a period just recorded on this same screen updates
+  // the highlighting immediately.
+  const [prediction, setPrediction] = useState<CalendarPrediction | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      apiRequest<CalendarPrediction>('/menstrual/prediction')
+        .then((data) => {
+          if (!cancelled) setPrediction(data);
+        })
+        .catch((err) => {
+          console.error('[calendar] failed to load /menstrual/prediction:', err);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   const hasRealEntries = Object.keys(periodEntries).length > 0;
+  const predictedStart = prediction?.nextPeriodStart ? parseIsoDate(prediction.nextPeriodStart) : null;
+  const predictedEnd = prediction?.nextPeriodEnd ? parseIsoDate(prediction.nextPeriodEnd) : null;
+  const fertileStart = prediction?.fertileWindowStart ? parseIsoDate(prediction.fertileWindowStart) : null;
+  const fertileEnd = prediction?.fertileWindowEnd ? parseIsoDate(prediction.fertileWindowEnd) : null;
 
   const getStatus = (date: Date): DayStatus => {
     const entry = periodEntries[dateKey(date)];
     if (entry) return entry.isEnd ? 'period-end' : 'period';
-    // Once the user has entered anything real, their data replaces the canned demo history —
-    // only the forward-looking prediction/fertile window (which we can't compute without a
-    // backend) still comes from the mock. A completely fresh session still shows demo history.
+    // Once the user has entered anything real, their data replaces the canned demo history.
     if (!hasRealEntries && pastPeriods.some((p) => isWithinRange(date, p.start, p.end))) return 'period';
-    if (isWithinRange(date, cycleStats.nextPeriodStart, cycleStats.nextPeriodEnd)) return 'predicted';
-    if (isWithinRange(date, cycleStats.fertileWindowStart, cycleStats.fertileWindowEnd)) return 'fertile';
+    if (predictedStart && predictedEnd && isWithinRange(date, predictedStart, predictedEnd)) return 'predicted';
+    if (fertileStart && fertileEnd && isWithinRange(date, fertileStart, fertileEnd)) return 'fertile';
     return 'none';
   };
 
@@ -135,12 +173,20 @@ export default function CalendarScreen() {
   );
 
   const handleBatchRecord = (details: { flow?: string; symptoms: string[]; mood: string[] }) => {
-    multiSelectedDays.forEach((date) => {
+    const dates = multiSelectedDays;
+    dates.forEach((date) => {
       togglePeriodDay(date); // each of these is guaranteed unrecorded — see selectDay's guard above
       updatePeriodDayEntry(date, { flow: details.flow, symptoms: details.symptoms, mood: details.mood });
     });
     setMultiSelectedDays([]);
     setBatchModalVisible(false);
+
+    commitDays(
+      dates.map((date) => ({ date, flow: details.flow, symptoms: details.symptoms, mood: details.mood })),
+      'calendar',
+    ).catch((err) => {
+      Alert.alert("Couldn't save to the server", err instanceof Error ? err.message : 'Please try again.');
+    });
   };
 
   return (
@@ -300,6 +346,9 @@ export default function CalendarScreen() {
                   // Brief pause so the "Recorded!" confirmation is actually visible before the
                   // popup closes — same ~1s pattern the rest of the app uses after a save.
                   setTimeout(() => setDayEditorVisible(false), 1100);
+                  commitDays([{ ...selectedEntry, date: selected }], 'calendar').catch((err) => {
+                    Alert.alert("Couldn't save to the server", err instanceof Error ? err.message : 'Please try again.');
+                  });
                 }}
               />
             </ScrollView>

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/mira/app-text';
@@ -9,10 +10,21 @@ import { CycleRecapModal, RecapCycle } from '@/components/mira/cycle-recap-modal
 import { IconCircle } from '@/components/mira/icon-circle';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { ScreenHeader } from '@/components/mira/screen-header';
-import { cycleStats, pastPeriods, today } from '@/constants/mock-data';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { getPeriodStreaks, useAppState } from '@/context/app-state';
-import { daysBetween, formatRange, formatShort } from '@/utils/date';
+import { apiRequest } from '@/utils/api';
+import { daysBetween, formatRange, formatShort, parseIsoDate } from '@/utils/date';
+
+/** Shape of `GET /api/menstrual/prediction` this screen reads — see menstrualController.js.
+ *  Every field but the two lengths is null until a first period's ever been logged. */
+type PredictionResponse = {
+  currentDay: number | null;
+  averageCycleLength: number;
+  averagePeriodLength: number;
+  phase: string | null;
+  nextPeriodStart: string | null;
+  nextPeriodEnd: string | null;
+};
 
 type PhaseKey = 'menstrual' | 'follicular' | 'ovulation' | 'luteal';
 
@@ -117,29 +129,95 @@ function buildPhases(averageCycleLength: number, averagePeriodLength: number): P
   return phases.filter((p) => p.end >= p.start);
 }
 
-function currentPhase(day: number, phases: PhaseInfo[]) {
-  return phases.find((p) => day <= p.end) ?? phases[phases.length - 1];
+/**
+ * Which of the local decorative PhaseInfo entries (icon/color/momentum/description — none of
+ * which the backend knows about) matches "now". Prefers matching by `phaseLabel` — the backend's
+ * own `GET /api/menstrual/prediction`'s `phase` field (e.g. "Menstrual phase") — over re-deriving
+ * it from `day` client-side, so this screen's day/phase math and the backend's never disagree.
+ * `day`-based lookup is only the fallback for whenever `phaseLabel` is null (no period logged
+ * yet); `phases[0]` after that covers the (should-be-impossible) case where neither is usable.
+ */
+function currentPhase(phases: PhaseInfo[], phaseLabel: string | null, day: number | null): PhaseInfo {
+  if (phaseLabel) {
+    // Backend sends "Menstrual phase", local labels are just "Menstrual" — startsWith bridges
+    // the two without needing either side's wording to match exactly.
+    const match = phases.find((p) => phaseLabel.startsWith(p.label));
+    if (match) return match;
+  }
+  if (day != null) return phases.find((p) => day <= p.end) ?? phases[phases.length - 1];
+  return phases[0];
 }
 
 export default function PredictionScreen() {
   const { periodEntries } = useAppState();
-  const hasRealEntries = Object.keys(periodEntries).length > 0;
   const [recapCycle, setRecapCycle] = useState<RecapCycle | null>(null);
+  const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
+  // GET /menstrual/prediction doesn't include lastPeriodStart (it's not part of "predicting
+  // what's next") — GET /profile/me's own cycle cache does, so that's fetched alongside it just
+  // for this one "Last Period" chip below.
+  const [lastPeriodStart, setLastPeriodStart] = useState<Date | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
-  const daysUntilNext = daysBetween(today, cycleStats.nextPeriodStart);
-  const phases = buildPhases(cycleStats.averageCycleLength, cycleStats.averagePeriodLength);
-  const phase = currentPhase(cycleStats.currentDay, phases);
+  // Refetches every time this screen regains focus (from Home's "Details" or Calendar's "View
+  // Prediction Details"), same reasoning as Home's own useFocusEffect — a period logged right
+  // before navigating here should show up immediately, not whatever was cached from last visit.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      Promise.all([
+        apiRequest<PredictionResponse>('/menstrual/prediction'),
+        apiRequest<{ cycle: { lastPeriodStart: string | null } }>('/profile/me'),
+      ])
+        .then(([predictionData, profileData]) => {
+          if (cancelled) return;
+          setPrediction(predictionData);
+          setLastPeriodStart(profileData.cycle.lastPeriodStart ? parseIsoDate(profileData.cycle.lastPeriodStart) : null);
+        })
+        .catch((err) => {
+          console.error('[prediction] failed to load /menstrual/prediction or /profile/me:', err);
+        })
+        .finally(() => {
+          if (!cancelled) setDataLoaded(true);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
+
+  const averageCycleLength = prediction?.averageCycleLength ?? 28;
+  const averagePeriodLength = prediction?.averagePeriodLength ?? 5;
+  const nextPeriodStart = prediction?.nextPeriodStart ? parseIsoDate(prediction.nextPeriodStart) : null;
+  const nextPeriodEnd = prediction?.nextPeriodEnd ? parseIsoDate(prediction.nextPeriodEnd) : null;
+  const daysUntilNext = nextPeriodStart ? daysBetween(new Date(), nextPeriodStart) : null;
+
+  const phases = buildPhases(averageCycleLength, averagePeriodLength);
+  const phase = currentPhase(phases, prediction?.phase ?? null, prediction?.currentDay ?? null);
 
   // Once the user has entered anything real, their data replaces the canned demo history here
   // too, same rule Calendar's grid already follows — otherwise "Cycle History" would keep
-  // showing fake cycles a real recap could never actually explain.
+  // showing fake cycles a real recap could never actually explain. No mock/demo fallback for an
+  // empty account anymore either — see the empty state below instead of pastPeriods.
   const history = useMemo(() => {
-    const streaks = hasRealEntries ? getPeriodStreaks(periodEntries) : pastPeriods;
+    const streaks = getPeriodStreaks(periodEntries);
     return streaks
       .map((p, i, arr) => ({ ...p, cycleLength: i > 0 ? daysBetween(arr[i - 1].start, p.start) : null }))
       .slice()
       .reverse();
-  }, [hasRealEntries, periodEntries]);
+  }, [periodEntries]);
+
+  if (!dataLoaded) {
+    return (
+      <ScreenContainer edges={['top', 'left', 'right']}>
+        <ScreenHeader title="Cycle Prediction" subtitle="Based on your history" />
+        <View style={styles.loadingWrap}>
+          <AppText variant="small" color={Colors.textMuted}>
+            Loading your prediction…
+          </AppText>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer edges={['top', 'left', 'right']}>
@@ -155,16 +233,16 @@ export default function PredictionScreen() {
             NEXT PERIOD ESTIMATED
           </AppText>
           <AppText variant="display" color={Colors.textOnPrimary} style={styles.heroRange}>
-            {formatRange(cycleStats.nextPeriodStart, cycleStats.nextPeriodEnd)}
+            {nextPeriodStart && nextPeriodEnd ? formatRange(nextPeriodStart, nextPeriodEnd) : 'Not enough data yet'}
           </AppText>
           <AppText variant="body" color="rgba(255,255,255,0.85)">
-            {daysUntilNext} days from today
+            {daysUntilNext != null ? `${daysUntilNext} days from today` : 'Record a period to get a prediction'}
           </AppText>
 
           <View style={styles.heroStatsRow}>
-            <HeroChip value={`${cycleStats.averageCycleLength} days`} label="Cycle Length" />
-            <HeroChip value={`${cycleStats.averagePeriodLength} days`} label="Period Length" />
-            <HeroChip value={formatShort(cycleStats.lastPeriodStart)} label="Last Period" />
+            <HeroChip value={`${averageCycleLength} days`} label="Cycle Length" />
+            <HeroChip value={`${averagePeriodLength} days`} label="Period Length" />
+            <HeroChip value={lastPeriodStart ? formatShort(lastPeriodStart) : '—'} label="Last Period" />
           </View>
         </LinearGradient>
       </Card>
@@ -180,7 +258,7 @@ export default function PredictionScreen() {
           <View style={{ flex: 1 }}>
             <AppText variant="bodyMedium">{phase.label} Phase</AppText>
             <AppText variant="small" color={Colors.textSecondary} style={{ marginTop: 2 }}>
-              Day {cycleStats.currentDay} of {cycleStats.averageCycleLength} · {phase.momentum}
+              Day {prediction?.currentDay ?? '—'} of {averageCycleLength} · {phase.momentum}
             </AppText>
           </View>
         </View>
@@ -220,9 +298,18 @@ export default function PredictionScreen() {
         <AppText variant="h3" style={styles.cardTitle}>
           Cycle History
         </AppText>
-        <AppText variant="small" color={Colors.textMuted} style={styles.historyHint}>
-          Tap a cycle to see everything logged for it.
-        </AppText>
+        {history.length === 0 ? (
+          <View style={styles.historyEmpty}>
+            <Ionicons name="calendar-outline" size={16} color={Colors.textMuted} />
+            <AppText variant="small" color={Colors.textMuted} style={styles.historyEmptyText}>
+              No cycles logged yet — record a period on Calendar to start building your history.
+            </AppText>
+          </View>
+        ) : (
+          <AppText variant="small" color={Colors.textMuted} style={styles.historyHint}>
+            Tap a cycle to see everything logged for it.
+          </AppText>
+        )}
         {history.map((p, i) => (
           <Pressable
             key={i}
@@ -277,6 +364,7 @@ function HeroChip({ value, label }: { value: string; label: string }) {
 }
 
 const styles = StyleSheet.create({
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: '40%' },
   heroCard: { overflow: 'hidden', marginBottom: Spacing.lg },
   heroGradient: { padding: Spacing.xl },
   heroRange: { marginTop: Spacing.xs, marginBottom: Spacing.xs },
@@ -311,6 +399,8 @@ const styles = StyleSheet.create({
   phaseDot: { width: 10, height: 10, borderRadius: 5 },
   phaseLabelRow: { flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: Spacing.xs },
   historyHint: { marginBottom: Spacing.sm },
+  historyEmpty: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, paddingVertical: Spacing.sm },
+  historyEmptyText: { flex: 1, lineHeight: 18 },
   historyRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md },
   historyRowBorder: { borderTopWidth: 1, borderTopColor: Colors.border },
   historyPill: {

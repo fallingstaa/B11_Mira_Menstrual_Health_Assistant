@@ -73,6 +73,32 @@ export function dateKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
+/**
+ * `YYYY-MM-DD` in the device's *local* calendar day — what the backend's `date`/`asOf`
+ * query params and request bodies expect (see menstrualValidators.js's `z.iso.date()`).
+ * Deliberately not `date.toISOString()` — that converts to UTC first, which can shift
+ * the calendar day by one in any timezone behind UTC (e.g. 11pm local on the 10th is
+ * already the 11th in UTC).
+ */
+export function isoDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Inverse of `isoDate` — also tolerates a full Mongo/JSON timestamp (e.g.
+ * `"2026-07-24T00:00:00.000Z"`, what `GET` endpoints actually return) by only reading
+ * its first 10 characters. Builds the `Date` from local Y/M/D components (never
+ * `new Date(isoString)` directly) so the same UTC-shift risk `isoDate` avoids on the
+ * way out doesn't sneak back in on the way in.
+ */
+export function parseIsoDate(iso: string): Date {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 export function isWithinRange(date: Date, start: Date, end: Date): boolean {
   const d = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
   const s = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());

@@ -10,6 +10,16 @@ type RequestOptions = {
   body?: unknown;
   /** Attach the signed-in user's ID token as a Bearer header. Defaults to true — pass false for auth/register, auth/login, and public education endpoints. */
   auth?: boolean;
+  /**
+   * Downgrades this call's own failure logging from console.error to console.warn. Use for a
+   * call whose caller already expects a failure might happen and handles it itself (e.g. a
+   * retry loop) — React Native's LogBox pops its intrusive red-screen "Console Error" overlay
+   * on any console.error, which reads as a crash even when the code recovers from it a moment
+   * later (console.warn only shows a small dismissible banner). The caller's own eventual
+   * console.error, if it still fails after retrying, is what should trigger that overlay —
+   * not every individual attempt along the way.
+   */
+  quiet?: boolean;
 };
 
 /**
@@ -21,8 +31,9 @@ type RequestOptions = {
  */
 export async function apiRequest<T = unknown>(
   path: string,
-  { method = 'GET', body, auth: needsAuth = true }: RequestOptions = {},
+  { method = 'GET', body, auth: needsAuth = true, quiet = false }: RequestOptions = {},
 ): Promise<T> {
+  const log = quiet ? console.warn : console.error;
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
   if (needsAuth) {
@@ -46,20 +57,59 @@ export async function apiRequest<T = unknown>(
     // server at all — almost always EXPO_PUBLIC_API_URL being unreachable from this
     // device (wrong LAN IP, backend not running, phone on a different network) rather
     // than anything wrong with the request itself.
-    console.error(`[api] ✗ network error calling ${url} — is the backend running and reachable from this device?`, networkErr);
+    log(`[api] ✗ network error calling ${url} — is the backend running and reachable from this device?`, networkErr);
     throw new Error(`Can't reach the server at ${API_URL}. Check the backend is running and EXPO_PUBLIC_API_URL is correct.`);
   }
 
   const json = await res.json().catch((parseErr) => {
-    console.error(`[api] ✗ ${method} ${url} returned non-JSON (status ${res.status})`, parseErr);
+    log(`[api] ✗ ${method} ${url} returned non-JSON (status ${res.status})`, parseErr);
     throw new Error(`Unexpected response from server (status ${res.status}).`);
   });
 
   if (!res.ok || json.status === 'error') {
-    console.error(`[api] ✗ ${method} ${url} →`, res.status, json);
+    log(`[api] ✗ ${method} ${url} →`, res.status, json);
     throw new Error(json.message ?? `Request failed (${res.status})`);
   }
 
   console.log(`[api] ✓ ${method} ${url} →`, res.status);
+  return json.data ?? json;
+}
+
+/**
+ * Same envelope/error handling as apiRequest, but for a multipart body (avatar upload) —
+ * apiRequest always JSON.stringifies and forces Content-Type: application/json, neither
+ * of which multipart wants. Deliberately not setting Content-Type here at all: fetch/RN
+ * needs to generate it itself (including the multipart boundary) from the FormData body.
+ */
+export async function apiUpload<T = unknown>(path: string, formData: FormData): Promise<T> {
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) throw new Error('Not signed in');
+
+  const url = `${API_URL}/api${path}`;
+  console.log(`[api] → POST ${url} (upload)`);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+  } catch (networkErr) {
+    console.error(`[api] ✗ network error uploading to ${url}`, networkErr);
+    throw new Error(`Can't reach the server at ${API_URL}. Check the backend is running and EXPO_PUBLIC_API_URL is correct.`);
+  }
+
+  const json = await res.json().catch((parseErr) => {
+    console.error(`[api] ✗ POST ${url} returned non-JSON (status ${res.status})`, parseErr);
+    throw new Error(`Unexpected response from server (status ${res.status}).`);
+  });
+
+  if (!res.ok || json.status === 'error') {
+    console.error(`[api] ✗ POST ${url} →`, res.status, json);
+    throw new Error(json.message ?? `Request failed (${res.status})`);
+  }
+
+  console.log(`[api] ✓ POST ${url} →`, res.status);
   return json.data ?? json;
 }

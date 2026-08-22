@@ -13,12 +13,23 @@ function addDays(date, days) {
 function predictNextCycle({ lastPeriodStart, averageCycleLength, averagePeriodLength }) {
   if (!lastPeriodStart) return null;
 
+  // Next Period Start: start date + cycle length, full stop — deliberately never touches
+  // averagePeriodLength/lastPeriodEnd at all. Cycle length is a start-to-start measurement;
+  // how long a period bleeds for doesn't move when the *next* one begins.
   const nextPeriodStart = addDays(lastPeriodStart, averageCycleLength);
+  // Next Period End: only place averagePeriodLength enters this function at all — how long
+  // the *next* period is expected to last, not this one's.
   const nextPeriodEnd = addDays(nextPeriodStart, averagePeriodLength - 1);
-  // Ovulation is ~14 days before the *next* period, fertile window is the ~5 days
-  // leading up to and including it — matches the home/prediction screens' phase math.
-  const fertileWindowStart = addDays(nextPeriodStart, -(averageCycleLength - 11));
-  const fertileWindowEnd = addDays(fertileWindowStart, 4);
+  // Ovulation is exactly 14 days before the *next* period (the luteal phase is the
+  // relatively fixed part of a cycle) — anchored to nextPeriodStart, so this correctly
+  // shifts later for a longer cycle and earlier for a shorter one. The previous formula
+  // here (`-(averageCycleLength - 11)`) algebraically canceled averageCycleLength back out
+  // to a constant `lastPeriodStart + 11` — every cycle length landed on the exact same
+  // fertile window regardless of how long the cycle actually was, which was wrong.
+  const ovulationDay = addDays(nextPeriodStart, -14);
+  // Fertile window: the 5 days leading up to and including ovulation day.
+  const fertileWindowStart = addDays(ovulationDay, -4);
+  const fertileWindowEnd = ovulationDay;
 
   return { nextPeriodStart, nextPeriodEnd, fertileWindowStart, fertileWindowEnd };
 }

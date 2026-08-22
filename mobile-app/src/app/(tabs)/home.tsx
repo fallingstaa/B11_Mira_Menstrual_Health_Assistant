@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/mira/app-text';
@@ -15,29 +17,28 @@ import { MascotMini } from '@/components/mira/mascot';
 import { QuickAction } from '@/components/mira/quick-action';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { SectionHeader } from '@/components/mira/section-header';
-import { articles, cycleStats, healthTips, mockUser, notifications } from '@/constants/mock-data';
+import { articles, healthTips } from '@/constants/mock-data';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
-import { daysBetween, greeting } from '@/utils/date';
+import { apiRequest } from '@/utils/api';
+import { daysBetween, greeting, parseIsoDate } from '@/utils/date';
+
+type HomeProfile = { name: string; avatarUrl: string | null };
 
 /**
- * Which of the 4 phases `day` falls into — scaled to this user's own
- * averageCycleLength/averagePeriodLength instead of assuming a fixed 28-day cycle for
- * everyone. The old fixed thresholds (<=5/<=13/<=16) mislabeled longer/shorter cycles —
- * e.g. Day 17 of a 35-day cycle read as "Luteal" even though ovulation (~day 21) hadn't
- * happened yet. Mirrors backend/src/services/predictionService.js's cyclePhase() and
- * prediction.tsx's buildPhases() — keep all three in sync if this formula changes.
+ * Shape of `GET /api/menstrual/prediction` this screen actually reads — currentDay/phase are
+ * null until a first period's ever been logged (see predictionService.js). `phase` is already
+ * the full label ("Menstrual phase", "Luteal phase", ...) — no client-side re-derivation needed,
+ * unlike the old local `cyclePhase()` this replaced (that duplication is exactly what this
+ * endpoint's own doc comment invited replacing — see menstrualController.js).
  */
-function cyclePhase(day: number, averageCycleLength = 28, averagePeriodLength = 5): string {
-  const periodLength = Math.max(1, averagePeriodLength);
-  const cycleLength = Math.max(20, averageCycleLength);
-  const estimatedOvulationDay = cycleLength - 14;
-
-  if (day <= periodLength) return 'Menstrual phase';
-  if (day < estimatedOvulationDay - 1) return 'Follicular phase';
-  if (day <= estimatedOvulationDay + 1) return 'Ovulation phase';
-  return 'Luteal phase';
-}
+type HomePrediction = {
+  currentDay: number | null;
+  averageCycleLength: number;
+  averagePeriodLength: number;
+  phase: string | null;
+  nextPeriodStart: string | null;
+};
 
 /** "In 5 days" / "Today" / "2 days late" — the ONLY thing shown for the prediction, per spec (no date range). */
 function relativePeriodText(nextPeriodStartDate: Date): string {
@@ -49,9 +50,46 @@ function relativePeriodText(nextPeriodStartDate: Date): string {
 }
 
 export default function HomeScreen() {
-  const { firstPeriodRecorded, firstQuestionAsked, nextPeriodStartDate } = useAppState();
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const { firstPeriodRecorded, firstQuestionAsked, hydrated } = useAppState();
+  const [profile, setProfile] = useState<HomeProfile | null>(null);
+  const [prediction, setPrediction] = useState<HomePrediction | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const onboardingDone = firstPeriodRecorded && firstQuestionAsked;
+
+  // Refetches every time Home regains focus, not just on first mount — otherwise recording a
+  // period on Calendar/checkin/etc. and tabbing back here would keep showing whatever the hero
+  // card last loaded instead of the day/phase/prediction that write just changed. Same reason
+  // the bell badge is refetched here too, not read off a static import — reading/marking-all-read
+  // on the Notifications screen should be reflected the moment you come back to Home.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      Promise.all([
+        apiRequest<HomeProfile>('/profile/me'),
+        apiRequest<HomePrediction>('/menstrual/prediction'),
+        apiRequest<{ read: boolean }[]>('/reminders'),
+      ])
+        .then(([profileData, predictionData, reminders]) => {
+          if (cancelled) return;
+          setProfile(profileData);
+          setPrediction(predictionData);
+          setUnreadCount(reminders.filter((r) => !r.read).length);
+        })
+        .catch((err) => {
+          console.error('[home] failed to load /profile/me, /menstrual/prediction, or /reminders:', err);
+        })
+        .finally(() => {
+          if (!cancelled) setDataLoaded(true);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
+
+  const avatarInitial = profile?.name?.trim().charAt(0).toUpperCase() || '?';
+  const nextPeriodStartDate = prediction?.nextPeriodStart ? parseIsoDate(prediction.nextPeriodStart) : null;
 
   const steps: GettingStartedStep[] = [
     { key: 'account', label: 'Create your account', sublabel: 'Done!', done: true },
@@ -72,6 +110,23 @@ export default function HomeScreen() {
     },
   ];
 
+  // Waiting on either app-state's own hydration (periodEntries, which firstPeriodRecorded is
+  // derived from) or this screen's own profile/prediction fetch would otherwise flash the
+  // "Welcome to Mira!" first-time layout for a returning user for a moment before flipping to
+  // their real hero card the instant real data lands — this gate skips straight past that flash.
+  if (!hydrated || !dataLoaded) {
+    return (
+      <ScreenContainer tabBar>
+        <View style={styles.loadingWrap}>
+          <MascotMini size={40} />
+          <AppText variant="small" color={Colors.textMuted} style={{ marginTop: Spacing.sm }}>
+            Loading your cycle…
+          </AppText>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer tabBar>
       {firstPeriodRecorded ? (
@@ -80,13 +135,14 @@ export default function HomeScreen() {
             <View style={styles.headerLeft}>
               <IconCircle color={Colors.tint100} size={46}>
                 <AppText variant="h3" color={Colors.primary}>
-                  {mockUser.avatarInitial}
+                  {avatarInitial}
                 </AppText>
               </IconCircle>
               <View>
-                <AppText variant="h2">Hi, {mockUser.name}</AppText>
+                <AppText variant="h2">Hi, {profile?.name}</AppText>
                 <AppText variant="small">
-                  Day {cycleStats.currentDay} · {cyclePhase(cycleStats.currentDay, cycleStats.averageCycleLength, cycleStats.averagePeriodLength)}
+                  {prediction?.currentDay ? `Day ${prediction.currentDay}` : 'Day —'}
+                  {prediction?.phase ? ` · ${prediction.phase}` : ''}
                 </AppText>
               </View>
             </View>
@@ -100,10 +156,10 @@ export default function HomeScreen() {
               end={{ x: 1, y: 1 }}
               style={styles.heroGradient}>
               <View style={styles.heroTop}>
-                <CycleRing currentDay={cycleStats.currentDay} cycleLength={cycleStats.averageCycleLength} />
+                <CycleRing currentDay={prediction?.currentDay ?? 1} cycleLength={prediction?.averageCycleLength ?? 28} />
                 <View style={styles.heroStats}>
-                  <HeroStat label="Avg. cycle length" value={`${cycleStats.averageCycleLength} days`} />
-                  <HeroStat label="Avg. period length" value={`${cycleStats.averagePeriodLength} days`} />
+                  <HeroStat label="Avg. cycle length" value={`${prediction?.averageCycleLength ?? 28} days`} />
+                  <HeroStat label="Avg. period length" value={`${prediction?.averagePeriodLength ?? 5} days`} />
                 </View>
               </View>
 
@@ -114,7 +170,7 @@ export default function HomeScreen() {
                   <AppText variant="small" color="rgba(255,255,255,0.85)">
                     Next period estimated
                   </AppText>
-                  {/* Instant, on-device prediction (lastPeriodStartDate + averageCycleLength) — relative days only, no date range. */}
+                  {/* From GET /api/menstrual/prediction's nextPeriodStart — relative days only, no date range. */}
                   <AppText variant="h3" color={Colors.textOnPrimary} style={{ marginTop: 2 }}>
                     {nextPeriodStartDate ? relativePeriodText(nextPeriodStartDate) : '—'}
                   </AppText>
@@ -141,7 +197,7 @@ export default function HomeScreen() {
                   {greeting()},
                 </AppText>
                 <AppText variant="h1" color={Colors.textOnPrimary} style={{ marginTop: 2 }}>
-                  {mockUser.name}
+                  {profile?.name}
                 </AppText>
               </View>
               <NotificationBell unreadCount={unreadCount} onColor />
@@ -190,6 +246,7 @@ export default function HomeScreen() {
           <QuickAction label="Education" icon="book" color={Colors.lavender} tint={Colors.lavenderTint} onPress={() => router.push('/(tabs)/education')} />
           <QuickAction label="AI Assistant" icon="chatbubble-ellipses" color={Colors.peach} tint={Colors.peachTint} onPress={() => router.push('/(tabs)/assistant')} />
           <QuickAction label="Reminders" icon="alarm" color={Colors.info} tint={Colors.infoTint} onPress={() => router.push('/notifications')} />
+          <QuickAction label="Check-ins" icon="heart" color={Colors.success} tint={Colors.successTint} onPress={() => router.push('/checkin-history')} />
         </ScrollView>
       </View>
 
@@ -304,6 +361,7 @@ function HeroStat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: '40%' },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

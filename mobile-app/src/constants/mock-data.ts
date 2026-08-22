@@ -279,6 +279,24 @@ export const articles: Article[] = [
       'Myth: period blood is "dirty". Fact: it is simply blood and tissue from your uterine lining.',
     ],
   },
+  {
+    id: 'a7',
+    category: 'Basics',
+    title: 'The 4 Seasons of Your Body',
+    summary: 'Your cycle moves through four seasons every month — here\'s what each one means for your energy, mood, and focus.',
+    readTime: '6 min read',
+    icon: 'leaf-outline',
+    color: '#AD0E38',
+    tint: '#FDF1F4',
+    body: [
+      'Ever notice how some weeks you feel unstoppable, and others you just want to curl up under a blanket? That\'s not random — your body actually moves through four distinct "seasons" every single cycle, each with its own hormones, energy levels, and even the kind of day it\'s best suited for. Getting to know your own seasons can answer a lot of "why do I feel like this today?" questions before you even ask them.',
+      'Winter — Menstrual Phase (Days 1–5). Your period starts here, as your body sheds the uterine lining it built up the month before. Estrogen and progesterone are both at their lowest point of the whole cycle, which is a big part of why energy can dip and cramps or fatigue show up. Think of this as your body\'s actual rest season — gentle movement like walking or stretching, warm iron-rich meals, and giving yourself permission to slow down all genuinely help.',
+      'Spring — Follicular Phase (Days 6–13). Once your period ends, your body starts preparing to release an egg, and estrogen begins climbing steadily. That rising estrogen works like a shot of new-season energy — mood tends to brighten, brain fog lifts, and both your body and your motivation start waking back up. It\'s a great stretch for starting new projects, learning something new, or easing back into exercise.',
+      'Summer — Ovulation Phase (Days 14–17). This is your body\'s peak: an egg is released from the ovary, and estrogen along with luteinizing hormone hit their highest levels of the entire month. Most people feel their most energetic, confident, and social right around here. If something takes real focus or people-energy — a big workout, a presentation, a social event — this is often the sweet spot to schedule it.',
+      'Autumn — Luteal Phase (Days 18–28). After ovulation, progesterone rises to help the body prepare for a possible pregnancy. If that doesn\'t happen, both progesterone and estrogen fall sharply right before your next period — and that drop is what\'s actually behind a lot of classic PMS: bloating, cravings, irritability, lower energy. Like autumn winding down toward winter, this is a good phase for finishing up tasks already in motion, getting organized, and switching to lower-impact movement like strength training or Pilates.',
+      'Every body runs on its own timing, so these day ranges are a general guide, not a rulebook — especially in your first couple of years of having a period, when cycles are still finding their rhythm. Mira\'s Prediction tab already scales this exact phase breakdown to your own logged cycle length, so you can check what season you\'re actually in today, personalized to you.',
+    ],
+  },
 ];
 
 export type ChatMessage = {

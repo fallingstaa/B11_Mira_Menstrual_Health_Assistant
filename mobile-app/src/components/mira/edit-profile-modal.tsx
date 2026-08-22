@@ -13,6 +13,10 @@ type Props = {
   name: string;
   email: string;
   photoUri: string | null;
+  /** Auth header for `photoUri` when it's still the original remote avatar (GET /api/profile/avatar
+   *  requires it, like every other endpoint) — not needed once a fresh local photo's been picked,
+   *  see the `isRemotePhoto` check below. */
+  photoHeaders?: { Authorization: string };
   onCancel: () => void;
   onSave: (details: { name: string; email: string; photoUri: string | null }) => void;
 };
@@ -20,14 +24,18 @@ type Props = {
 const AVATAR_SIZE = 92;
 
 /**
- * "Edit Profile" popup — rename, change email, and set a profile photo. UI-only for now (see
- * profile.tsx): Save just updates the local profile state shown on the page, nothing round-trips
- * to the backend yet — there's no photo field on the real profile model at all currently.
+ * "Edit Profile" popup — rename, change email, and set a profile photo. `onSave` hands back
+ * whatever's currently in each field; profile.tsx is what actually decides which fields changed
+ * and PUTs/POSTs only those to the backend (see its handleSaveProfile).
  */
-export function EditProfileModal({ visible, name, email, photoUri, onCancel, onSave }: Props) {
+export function EditProfileModal({ visible, name, email, photoUri, photoHeaders, onCancel, onSave }: Props) {
   const [nameInput, setNameInput] = useState(name);
   const [emailInput, setEmailInput] = useState(email);
   const [photo, setPhoto] = useState(photoUri);
+  // Whether `photo` is still the original avatar handed in via props (needs photoHeaders to
+  // load, since it's our own authenticated GET /api/profile/avatar) or a fresh pick from this
+  // device's photo library (a plain local file:// URI, loads with no headers at all).
+  const isRemotePhoto = photo === photoUri;
 
   // Reset to whatever's currently saved every time this opens — otherwise a cancelled edit's
   // half-typed changes would still be sitting there the next time it's reopened.
@@ -88,7 +96,10 @@ export function EditProfileModal({ visible, name, email, photoUri, onCancel, onS
             <View style={styles.avatarSection}>
               <Pressable onPress={pickPhoto} style={styles.avatarWrap}>
                 {photo ? (
-                  <Image source={{ uri: photo }} style={styles.avatarImage} />
+                  <Image
+                    source={{ uri: photo, headers: isRemotePhoto ? photoHeaders : undefined }}
+                    style={styles.avatarImage}
+                  />
                 ) : (
                   <IconCircle color={Colors.tint100} size={AVATAR_SIZE}>
                     <AppText variant="h1" color={Colors.primary}>

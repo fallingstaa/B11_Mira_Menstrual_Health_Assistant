@@ -4,10 +4,49 @@ const MenstrualRecord = require("../models/MenstrualRecord");
 const User = require("../models/User");
 const { success, successMessage, error } = require("../utils/responseHandler");
 const asyncHandler = require("../utils/asyncHandler");
-const { toDayKey, isValidDateString } = require("../utils/dateHelper");
-const { predictNextCycle, cyclePhase, currentCycleDay } = require("../services/predictionService");
+const { toDayKey, isValidDateString, isSameMonth, isPastMonth } = require("../utils/dateHelper");
+const { predictNextCycle, buildPhases, cyclePhase, currentCycleDay } = require("../services/predictionService");
 const { recomputeCycleCache } = require("../services/cycleCacheService");
 const { resolveAsOf } = require("../utils/devClock");
+
+/**
+ * Server-side backstop for the same "current month always editable, a past month gets
+ * one first-time backfill and then locks" rule the mobile Calendar UI already enforces
+ * client-side (see calendar.tsx's openDayEditor/selectDay, and PeriodEntriesSummary's
+ * lockPastMonths) — nothing here should trust the app alone to have refused an edit it
+ * shouldn't have allowed, since a client-side check is only ever a UX nicety, not
+ * actual enforcement.
+ *
+ *  - A future date is never loggable at all — there's nothing to record yet.
+ *  - The current calendar month is always writable, any number of times.
+ *  - A past month can still be backfilled the very first time, but once *any* record
+ *    exists for that date, it's locked — no further edits or deletes — since that data
+ *    already feeds the cached cycle-length/prediction math (see cycleCacheService.js)
+ *    and shouldn't change out from under it after the fact.
+ *
+ * `today` is resolveAsOf(req) at the call site, not a raw `new Date()` — so, same as
+ * every other consumer of that dev-only escape hatch, this locking logic itself can be
+ * exercised with a simulated date in dev, but a real user can never spoof their own
+ * "today" to bypass it once deployed.
+ *
+ * Returns null if the write is allowed, or { statusCode, message } to reject it with.
+ */
+async function checkRecordEditable(userId, date, today) {
+  const dayKey = toDayKey(date);
+  if (dayKey > toDayKey(today)) {
+    return { statusCode: 400, message: "Can't log a period day that hasn't happened yet." };
+  }
+  if (isSameMonth(dayKey, today) || !isPastMonth(dayKey, today)) return null;
+
+  const existing = await MenstrualRecord.findOne({ userId, date: dayKey });
+  if (existing) {
+    return {
+      statusCode: 409,
+      message: "This day is from a previous month and was already logged, so it can't be changed anymore.",
+    };
+  }
+  return null;
+}
 
 const getPrediction = asyncHandler(async (req, res) => {
   const { cycle } = req.user;
@@ -24,6 +63,11 @@ const getPrediction = asyncHandler(async (req, res) => {
     averagePeriodLength: cycle.averagePeriodLength,
     ...prediction,
     phase: currentDay ? cyclePhase(currentDay, cycle.averageCycleLength, cycle.averagePeriodLength) : null,
+    // The full 4-phase day-range breakdown (Prediction screen's "Cycle Phases" card),
+    // not just which one `currentDay` is in — always present, even before any period's
+    // ever been logged, since it's derived purely from averageCycleLength/
+    // averagePeriodLength (which default to 28/5), unlike the rest of this response.
+    phases: buildPhases(cycle.averageCycleLength, cycle.averagePeriodLength),
   });
 });
 
@@ -43,13 +87,16 @@ const listRecords = asyncHandler(async (req, res) => {
   return success(res, records);
 });
 
-// Body shape (date/source/status/etc.) is already validated by the `validate`
+// Body shape (date/source/flowLevel/etc.) is already validated by the `validate`
 // middleware in menstrualRoutes.js (see validators/menstrualValidators.js) before this
 // controller ever runs — req.body here can be trusted as-is.
 const upsertRecord = asyncHandler(async (req, res) => {
-  const { date, isPeriodDay, isPeriodEnd, status, flowLevel, symptoms, mood, notes, source } = req.body;
+  const { date, isPeriodDay, isPeriodEnd, flowLevel, symptoms, mood, notes, source } = req.body;
 
   const dayKey = toDayKey(date);
+
+  const lockError = await checkRecordEditable(req.user._id, dayKey, resolveAsOf(req));
+  if (lockError) return error(res, lockError.message, lockError.statusCode);
 
   // If this day is being flagged as the period's end, un-flag any other day for this
   // user first — mirrors setPeriodEndDay() in the app's client-side state today.
@@ -66,7 +113,6 @@ const upsertRecord = asyncHandler(async (req, res) => {
       $set: {
         isPeriodDay: !!isPeriodDay,
         isPeriodEnd: !!isPeriodEnd,
-        status,
         flowLevel,
         symptoms: symptoms ?? [],
         mood,
@@ -99,6 +145,14 @@ const deleteRecord = asyncHandler(async (req, res) => {
   if (!isValidDateString(req.params.date)) return error(res, "date must be a valid date (YYYY-MM-DD)", 400);
 
   const dayKey = toDayKey(req.params.date);
+
+  // A delete only ever concerns an *existing* record, which — by checkRecordEditable's
+  // own rule — is exactly the case a past month always locks (the "one first-time
+  // backfill" allowance never applies here, since there's nothing left to backfill
+  // once something's already there to delete).
+  const lockError = await checkRecordEditable(req.user._id, dayKey, resolveAsOf(req));
+  if (lockError) return error(res, lockError.message, lockError.statusCode);
+
   await MenstrualRecord.findOneAndDelete({ userId: req.user._id, date: dayKey });
   await recomputeCycleCache(req.user._id);
   return successMessage(res, `Record for ${req.params.date} deleted.`);
@@ -149,6 +203,16 @@ const updateCycleSetup = asyncHandler(async (req, res) => {
 // the batch commits is both correct and far cheaper than once per record.
 const batchUpsertRecords = asyncHandler(async (req, res) => {
   const { source, records } = req.body;
+  const today = resolveAsOf(req);
+
+  // Same lock rule as the single-record upsert, checked for every entry up front —
+  // "all or nothing" applies to this rule too, not just the transaction below: one
+  // locked date anywhere in the batch rejects the whole request rather than silently
+  // saving everything else around it.
+  for (const r of records) {
+    const lockError = await checkRecordEditable(req.user._id, r.date, today);
+    if (lockError) return error(res, `${r.date}: ${lockError.message}`, lockError.statusCode);
+  }
 
   const session = await mongoose.startSession();
   let saved;
@@ -177,7 +241,6 @@ const batchUpsertRecords = asyncHandler(async (req, res) => {
             $set: {
               isPeriodDay: r.isPeriodDay,
               isPeriodEnd: r.isPeriodEnd,
-              status: r.status,
               flowLevel: r.flow,
               symptoms: r.symptoms,
               mood: r.mood,

@@ -5,7 +5,6 @@ module.exports = {
   // app/last-period-one-date.tsx (Path B). Path C (app/last-period-unknown.tsx) never
   // writes a record at all — see PUT /api/menstrual/cycle-setup instead.
   MENSTRUAL_RECORD_SOURCES: ["calendar", "checkin", "record", "record_first_period", "last_period_one_date"],
-  MENSTRUAL_STATUS: ["on", "spotting", "off"],
   NOTIFICATION_TYPES: ["period", "record", "checkin", "education"],
   // Mirrors MIN_CYCLE_LENGTH/MAX_CYCLE_LENGTH in
   // mobile-app/src/components/mira/cycle-length-question.tsx — the shared "do you know

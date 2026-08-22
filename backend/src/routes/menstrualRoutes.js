@@ -92,6 +92,16 @@ router.get("/records", listRecords);
  *       Setting `isPeriodEnd: true` automatically un-sets it on every other record for this user first, so at most
  *       one day is ever flagged as the period's end. Also triggers a recompute of the user's cached cycle stats
  *       (`User.cycle` — see `GET /api/menstrual/prediction`) from their updated record history.
+ *
+ *       **Locking**, same rule the mobile Calendar UI already enforces client-side: `date` can't be in the future;
+ *       the current calendar month is always writable; a past month can be backfilled for the very first time, but
+ *       once *any* record exists for that date it's locked (409) — no further edits, since it already feeds the
+ *       cached cycle-length/prediction math.
+ *     parameters:
+ *       - in: query
+ *         name: asOf
+ *         schema: { type: string, format: date }
+ *         description: "**Dev/test only** (ignored when `NODE_ENV=production`). Simulates a different \"today\" for the locking check above, so it can be exercised without waiting for a real month to pass."
  *     requestBody:
  *       required: true
  *       content:
@@ -109,10 +119,13 @@ router.get("/records", listRecords);
  *                 status: { type: string, example: success }
  *                 data: { $ref: '#/components/schemas/MenstrualRecord' }
  *       400:
- *         description: Missing `date`/`source`, or an invalid `source`/`status` value.
+ *         description: Missing `date`/`source`, an invalid `source` value, or `date` is in the future.
  *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
+ *       409:
+ *         description: This date is from a past month and was already logged — it's locked, see the locking rule above.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
  */
 router.post("/records", validate(upsertRecordSchema), upsertRecord);
 
@@ -127,6 +140,15 @@ router.post("/records", validate(upsertRecordSchema), upsertRecord);
  *       are — then recomputes the cached cycle stats once at the end (see `GET /api/menstrual/prediction`), not
  *       once per entry. `source` applies to the whole batch, not repeated per entry. Requires a replica-set
  *       MongoDB deployment for transactions (MongoDB Atlas, used in this project, always qualifies).
+ *
+ *       **Locking** applies per entry before anything is written, same rule as the single-record `POST /records`
+ *       (see its description) — one locked/future date anywhere in `records` rejects the *entire* batch with a
+ *       409/400, same "all or nothing" guarantee the transaction itself gives for any other failure.
+ *     parameters:
+ *       - in: query
+ *         name: asOf
+ *         schema: { type: string, format: date }
+ *         description: "**Dev/test only** (ignored when `NODE_ENV=production`). Simulates a different \"today\" for the locking check, so it can be exercised without waiting for a real month to pass."
  *     requestBody:
  *       required: true
  *       content:
@@ -149,7 +171,6 @@ router.post("/records", validate(upsertRecordSchema), upsertRecord);
  *                     date: { type: string, format: date, example: "2026-08-10" }
  *                     isPeriodDay: { type: boolean, default: true, description: "Defaults to true here, unlike the single-record POST /records (default false)." }
  *                     isPeriodEnd: { type: boolean, default: false }
- *                     status: { type: string, enum: [on, spotting, off] }
  *                     flow: { type: string, example: medium, description: "Stored as flowLevel on the saved record." }
  *                     symptoms:
  *                       type: array
@@ -180,6 +201,9 @@ router.post("/records", validate(upsertRecordSchema), upsertRecord);
  *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
+ *       409:
+ *         description: One of the entries' dates is from a past month and was already logged — see the locking rule above. The message names which date.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
  */
 router.post("/records/batch", validate(batchUpsertRecordSchema), batchUpsertRecords);
 
@@ -189,21 +213,32 @@ router.post("/records/batch", validate(batchUpsertRecordSchema), batchUpsertReco
  *   delete:
  *     tags: [Menstrual Tracking]
  *     summary: Delete a day's record
+ *     description: >
+ *       Same locking rule as `POST /api/menstrual/records` — since a delete only ever targets an *existing*
+ *       record, a past month always locks it (there's no "first-time" allowance for a delete the way there is for
+ *       a new backfill). Only the current month's records can be deleted.
  *     parameters:
  *       - in: path
  *         name: date
  *         required: true
  *         schema: { type: string, format: date }
  *         example: "2026-08-10"
+ *       - in: query
+ *         name: asOf
+ *         schema: { type: string, format: date }
+ *         description: "**Dev/test only** (ignored when `NODE_ENV=production`). Simulates a different \"today\" for the locking check, so it can be exercised without waiting for a real month to pass."
  *     responses:
  *       200:
  *         description: Deleted (or was already absent — this endpoint does not 404 on a missing record today).
  *         content: { application/json: { schema: { $ref: '#/components/schemas/MessageResponse' } } }
  *       400:
- *         description: date is not a valid date.
+ *         description: date is not a valid date, or is in the future.
  *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
+ *       409:
+ *         description: This record is from a past month and is locked — see the locking rule above.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
  */
 router.delete("/records/:date", deleteRecord);
 

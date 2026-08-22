@@ -9,6 +9,12 @@ const firebaseApp = initializeApp({
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
         privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
     }),
+    // Same bucket the mobile client's Firebase config already points at
+    // (EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET in mobile-app/.env) — not a secret, just an
+    // identifier, so it's fine for both the Admin SDK here and the client SDK there to
+    // reference the same one. Only needed for firebase-admin/storage (profile avatar
+    // uploads); every other Admin SDK usage in this backend (Auth) ignores it.
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
 });
 
 module.exports = firebaseApp;

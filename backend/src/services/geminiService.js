@@ -5,10 +5,22 @@
  * assistant.tsx's generateReply().
  */
 async function generateReply(question, context) {
-  // TODO: call the Gemini API here (GEMINI_API_KEY is already in .env) with `question`
-  // and `context` as grounding, and return its text response instead. Per Security
-  // Design 14.5, only send the question/context — never the user's name or email.
-  return "That's a great question! Mira's AI is still being connected on the backend — check back soon for a real, personalized answer.";
+  // No Gemini call at all when nothing relevant was retrieved — a guaranteed-safe,
+  // zero-cost, zero-hallucination-risk response by construction, rather than trusting
+  // the prompt alone to stop the model from guessing when handed nothing to work with.
+  if (!context) {
+    return NO_CONTEXT_REPLY;
+  }
+
+  const prompt = `Reference material:\n${context}\n\nQuestion: ${question}`;
+
+  const response = await ai.models.generateContent({
+    model: GENERATION_MODEL,
+    contents: prompt,
+    config: { systemInstruction: SYSTEM_PROMPT },
+  });
+
+  return response.text;
 }
 
 module.exports = { generateReply };

@@ -10,7 +10,8 @@ import { getAuth, initializeAuth } from 'firebase/auth';
 // will itself fail once it's no longer needed).
 // @ts-expect-error — see comment above; resolves fine at runtime via Metro.
 import { getReactNativePersistence } from '@firebase/auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { secureStorage } from '@/utils/secure-storage';
 
 /**
  * Client-side Firebase config — this is NOT the same secret as the backend's
@@ -36,7 +37,7 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 // instead of crashing the dev server.
 export const auth = (() => {
   try {
-    return initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
+    return initializeAuth(app, { persistence: getReactNativePersistence(secureStorage) });
   } catch {
     return getAuth(app);
   }

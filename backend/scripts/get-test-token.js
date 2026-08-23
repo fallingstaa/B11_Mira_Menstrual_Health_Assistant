@@ -20,6 +20,14 @@
 // the token).
 require("dotenv").config({ quiet: true });
 
+// Admin SDK, not the public Identity Toolkit REST API this script otherwise talks to —
+// only the Admin SDK can flip emailVerified directly, no inbox click needed. Since
+// authMiddleware.js now rejects unverified tokens (see its "EMAIL_NOT_VERIFIED" check),
+// without this the dev test account would need a real verification-link click before
+// Swagger could use it for anything past /auth/login.
+const { getAuth } = require("firebase-admin/auth");
+const firebaseApp = require("../config/firebase");
+
 const API_KEY = process.env.TEST_FIREBASE_WEB_API_KEY;
 const EMAIL = process.env.TEST_USER_EMAIL;
 const PASSWORD = process.env.TEST_USER_PASSWORD;
@@ -60,6 +68,12 @@ async function callIdentityToolkit(endpoint) {
     result = await callIdentityToolkit("signUp");
     console.error(`[get-test-token] created new dev test account ${EMAIL}`);
   }
+
+  // Force-verify the throwaway dev account (see the require() comment above) — this
+  // doesn't touch the ID token we already have in `result`, so it's re-fetched fresh
+  // afterward to make sure the returned token actually reflects email_verified: true.
+  await getAuth(firebaseApp).updateUser(result.localId, { emailVerified: true });
+  result = await callIdentityToolkit("signInWithPassword");
 
   console.error(`[get-test-token] uid: ${result.localId}  (expires in ${result.expiresIn}s)`);
   console.error("[get-test-token] paste the token below into Swagger's Authorize dialog:\n");

@@ -41,6 +41,7 @@ export default function RootLayout() {
               <Stack.Screen name="onboarding" />
               <Stack.Screen name="login" options={{ animation: 'fade' }} />
               <Stack.Screen name="register" />
+              <Stack.Screen name="verify-email" />
               <Stack.Screen name="cycle-basics" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="forgot-password" />
               <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />

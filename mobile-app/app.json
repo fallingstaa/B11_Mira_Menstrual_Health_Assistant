@@ -43,7 +43,8 @@
         {
           "photosPermission": "Mira uses your photos to let you set a profile picture."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

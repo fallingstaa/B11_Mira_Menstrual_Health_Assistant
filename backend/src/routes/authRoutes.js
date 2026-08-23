@@ -3,7 +3,7 @@ const express = require("express");
 const { register, login, forgotPassword } = require("../controllers/authController");
 const validate = require("../middleware/validate");
 const { registerSchema, loginSchema, forgotPasswordSchema } = require("../validators/authValidators");
-const { authLimiter } = require("../middleware/rateLimiters");
+const { authLimiter, forgotPasswordEmailLimiter } = require("../middleware/rateLimiters");
 
 const router = express.Router();
 
@@ -121,6 +121,6 @@ router.post("/login", validate(loginSchema), login);
  *         description: email missing.
  *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
  */
-router.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);
+router.post("/forgot-password", forgotPasswordEmailLimiter, validate(forgotPasswordSchema), forgotPassword);
 
 module.exports = router;

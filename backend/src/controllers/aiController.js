@@ -1,8 +1,14 @@
 const AIConversation = require("../models/AIConversation");
+// Not referenced directly below — required purely so its schema is registered with
+// Mongoose before turn.populate("sourceIds") runs. Nothing else currently loaded at
+// server startup requires this file, so without this line populate throws
+// MissingSchemaError instead of quietly working.
+require("../models/KnowledgeSource");
 const { success, successMessage, error } = require("../utils/responseHandler");
 const asyncHandler = require("../utils/asyncHandler");
 const { retrieveContext } = require("../services/ragService");
 const { generateReply } = require("../services/geminiService");
+const { isUnsafeQuestion, SAFETY_DISCLAIMER } = require("../services/safetyService");
 
 const ask = asyncHandler(async (req, res) => {
   const { question } = req.body;
@@ -10,8 +16,22 @@ const ask = asyncHandler(async (req, res) => {
 
   // Deliberately not sending req.user's name/email to the AI — only the question and
   // whatever the RAG layer retrieves (Security Design 14.5).
-  const { context, sourceIds } = await retrieveContext(question);
-  const aiResponse = await generateReply(question, context);
+  //
+  // Checked before retrieval/generation even run — a question asking for a personal
+  // diagnosis or a specific medication/dosage never touches the knowledge base or the
+  // answer-writing model at all (Feedback Item 2: safely handle diagnosis/medication
+  // questions). context/sourceIds stay empty in this branch since nothing was actually
+  // retrieved — the disclaimer is a fixed response, not something grounded in KB content.
+  let context = "";
+  let sourceIds = [];
+  let aiResponse;
+
+  if (await isUnsafeQuestion(question)) {
+    aiResponse = SAFETY_DISCLAIMER;
+  } else {
+    ({ context, sourceIds } = await retrieveContext(question));
+    aiResponse = await generateReply(question, context);
+  }
 
   const turn = await AIConversation.create({
     userId: req.user._id,
@@ -20,6 +40,12 @@ const ask = asyncHandler(async (req, res) => {
     aiResponse,
     sourceIds,
   });
+
+  // Was already saved to the DB before this (see sourceIds above) but never sent back
+  // to whoever asked — meaning no client could ever actually show "this answer is
+  // based on WHO/CDC" even though the data existed. Populated here (not just returning
+  // raw ObjectIds) so the response carries the actual citation name/URL directly.
+  await turn.populate("sourceIds");
 
   if (!req.user.onboarding.firstQuestionAsked) {
     req.user.onboarding.firstQuestionAsked = true;
@@ -32,6 +58,11 @@ const ask = asyncHandler(async (req, res) => {
       turnId: turn._id,
       question: turn.question,
       aiResponse: turn.aiResponse,
+      sources: turn.sourceIds.map((s) => ({
+        sourceId: s._id,
+        sourceName: s.sourceName,
+        sourceUrl: s.sourceUrl,
+      })),
       createdAt: turn.createdAt,
     },
     201

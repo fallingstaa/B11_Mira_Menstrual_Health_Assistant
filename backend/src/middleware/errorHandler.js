@@ -16,7 +16,7 @@ function errorHandler(err, req, res, next) {
     return error(res, "A record with that value already exists", 409);
   }
 
-  return error(res, err.message || "Something went wrong", err.statusCode || 500);
+  return error(res, err.message || "Something went wrong", err.statusCode || 500, err.code);
 }
 
 module.exports = errorHandler;

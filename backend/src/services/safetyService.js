@@ -1,4 +1,5 @@
 const { GoogleGenAI } = require("@google/genai");
+const { wrapAIServiceError } = require("../utils/aiServiceError");
 
 // Deliberately a *different* model than geminiService.js's answer-writing call
 // (gemini-3.5-flash-lite) — Google's free-tier limits are tracked per model, both per
@@ -35,11 +36,16 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
  * the same "safe by construction" principle as geminiService.js's empty-context skip.
  */
 async function isUnsafeQuestion(question) {
-  const response = await ai.models.generateContent({
-    model: CLASSIFIER_MODEL,
-    contents: question,
-    config: { systemInstruction: CLASSIFIER_PROMPT },
-  });
+  let response;
+  try {
+    response = await ai.models.generateContent({
+      model: CLASSIFIER_MODEL,
+      contents: question,
+      config: { systemInstruction: CLASSIFIER_PROMPT },
+    });
+  } catch (err) {
+    throw wrapAIServiceError(err, "safetyService.isUnsafeQuestion");
+  }
 
   return response.text.trim().toUpperCase().startsWith("BLOCK");
 }

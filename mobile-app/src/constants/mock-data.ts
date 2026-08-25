@@ -299,11 +299,15 @@ export const articles: Article[] = [
   },
 ];
 
+export type ChatSource = { sourceId: string; sourceName: string; sourceUrl: string };
+
 export type ChatMessage = {
   id: string;
   from: 'user' | 'mira';
   text: string;
   time: string;
+  /** Only ever set on a real `from: 'mira'` reply that actually cited something — see assistant.tsx. */
+  sources?: ChatSource[];
 };
 
 export const initialChat: ChatMessage[] = [

@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
 import { AppText } from '@/components/mira/app-text';
@@ -22,6 +22,26 @@ export function ChatBubble({ message }: { message: ChatMessage }) {
         <AppText variant="body" color={isUser ? Colors.textOnPrimary : Colors.text} style={styles.text}>
           {message.text}
         </AppText>
+
+        {/* Only ever present on a real, grounded Mira answer — never on the blocked/"don't know"
+            replies, since those never actually retrieved anything to cite. This is the one visible
+            payoff of the whole RAG pipeline: proof an answer came from somewhere real. */}
+        {!isUser && message.sources && message.sources.length > 0 && (
+          <View style={styles.sourcesRow}>
+            {message.sources.map((s) => (
+              <Pressable
+                key={s.sourceId}
+                onPress={() => Linking.openURL(s.sourceUrl)}
+                style={styles.sourceChip}
+                hitSlop={4}>
+                <AppText variant="caption" color={Colors.primary}>
+                  {s.sourceName}
+                </AppText>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
         <AppText variant="caption" color={isUser ? 'rgba(255,255,255,0.75)' : Colors.textMuted} style={styles.time}>
           {message.time}
         </AppText>
@@ -45,5 +65,14 @@ const styles = StyleSheet.create({
   miraBubble: { backgroundColor: Colors.surfaceAlt, borderBottomLeftRadius: 4 },
   userBubble: { backgroundColor: Colors.primary, borderBottomRightRadius: 4 },
   text: { lineHeight: 21 },
+  sourcesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs, marginTop: Spacing.sm },
+  sourceChip: {
+    paddingVertical: 3,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Colors.tint200,
+    backgroundColor: Colors.tint50,
+  },
   time: { marginTop: Spacing.xs, textAlign: 'right' },
 });

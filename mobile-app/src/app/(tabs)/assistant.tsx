@@ -22,24 +22,16 @@ import { TypingDots } from '@/components/mira/typing-dots';
 import { ChatMessage, chatSuggestions, initialChat } from '@/constants/mock-data';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
+import { apiRequest } from '@/utils/api';
 
-const REPLIES: Record<string, string> = {
-  'Why do I get cramps?':
-    'Cramps happen when your uterus contracts to shed its lining. A warm compress and gentle movement can really help!',
-  'Is my flow normal?':
-    'Flow varies a lot from person to person — anywhere from light spotting to needing a change every few hours can be normal. If it ever feels unusually heavy, it is worth mentioning to a trusted adult.',
-  'How do I use a tampon?':
-    'Totally okay to feel nervous about this one! Start by relaxing, use a slim/light tampon, and take your time — Mira has a full guide in the Education tab if you want step-by-step pictures.',
-  'Why am I moody today?':
-    'Hormone shifts before your period (PMS) can absolutely affect mood — you are not overreacting, it is biology! Being gentle with yourself helps.',
+// Shape of the real POST /api/ai/ask response — see backend/src/controllers/aiController.js.
+type AskResponse = {
+  turnId: string;
+  question: string;
+  aiResponse: string;
+  sources: { sourceId: string; sourceName: string; sourceUrl: string }[];
+  createdAt: string;
 };
-
-function generateReply(text: string): string {
-  return (
-    REPLIES[text] ??
-    "That's a great question! While I'm just a prototype right now, in the full version I'll give you a caring, science-based answer tailored to your cycle."
-  );
-}
 
 let messageId = initialChat.length + 1;
 
@@ -71,7 +63,7 @@ export default function AssistantScreen() {
 
   const scrollToEnd = () => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
 
-  const send = (text: string) => {
+  const send = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
@@ -88,17 +80,43 @@ export default function AssistantScreen() {
 
     setTyping(true);
     scrollToEnd();
-    setTimeout(() => {
+
+    try {
+      // The real pipeline: safety check → retrieval → grounded generation (or an honest
+      // "I don't know"/safety disclaimer) — see backend/src/controllers/aiController.js.
+      // `quiet: true` since a failure here is expected and handled right below, not a bug
+      // worth popping LogBox's red-screen overlay over.
+      const data = await apiRequest<AskResponse>('/ai/ask', {
+        method: 'POST',
+        body: { question: trimmed },
+        quiet: true,
+      });
       const reply: ChatMessage = {
         id: `m${messageId++}`,
         from: 'mira',
-        text: generateReply(trimmed),
+        text: data.aiResponse,
+        time: 'Now',
+        sources: data.sources,
+      };
+      setMessages((prev) => [...prev, reply]);
+    } catch (err) {
+      // A real network call can genuinely fail in ways the old canned lookup never
+      // could (no connection, session expired, server error) — surfaced here as a
+      // normal-looking Mira message rather than crashing the screen.
+      const reply: ChatMessage = {
+        id: `m${messageId++}`,
+        from: 'mira',
+        text:
+          err instanceof Error
+            ? `Sorry, I couldn't get an answer just now — ${err.message}`
+            : "Sorry, I couldn't get an answer just now. Please try again in a moment.",
         time: 'Now',
       };
-      setTyping(false);
       setMessages((prev) => [...prev, reply]);
+    } finally {
+      setTyping(false);
       scrollToEnd();
-    }, 1400);
+    }
   };
 
   return (
@@ -188,7 +206,19 @@ const styles = StyleSheet.create({
   },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
   onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.success },
-  messagesContent: { paddingHorizontal: Spacing.xxl, paddingTop: Spacing.xl, paddingBottom: Spacing.lg },
+  // flexGrow + justifyContent: 'flex-end' — without this, a short conversation (just the
+  // welcome message or two) leaves a big dead gap below the last bubble, since the
+  // ScrollView itself is flex:1 (fills all space above the suggestions/input) but its
+  // content, by default, sticks to the top instead of the bottom. This makes short
+  // conversations sit right above the suggestions/input, like a normal chat app, while
+  // a long conversation still scrolls completely normally once it overflows.
+  messagesContent: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
+    paddingHorizontal: Spacing.xxl,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.lg,
+  },
   typingRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, marginBottom: Spacing.lg },
   avatar: {
     width: 30,

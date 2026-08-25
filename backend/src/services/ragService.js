@@ -1,6 +1,7 @@
 const { GoogleGenAI } = require("@google/genai");
 
 const KnowledgeChunk = require("../models/KnowledgeChunk");
+const { wrapAIServiceError } = require("../utils/aiServiceError");
 
 // Same model used to embed the knowledge base itself in scripts/seed-knowledge-base.js
 // — a question embedded with a different model would land in a different, incompatible
@@ -35,7 +36,12 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
  * logic (still to be built) will branch on.
  */
 async function retrieveContext(question) {
-  const { embeddings } = await ai.models.embedContent({ model: EMBEDDING_MODEL, contents: question });
+  let embeddings;
+  try {
+    ({ embeddings } = await ai.models.embedContent({ model: EMBEDDING_MODEL, contents: question }));
+  } catch (err) {
+    throw wrapAIServiceError(err, "ragService.retrieveContext");
+  }
   const queryVector = embeddings[0].values;
 
   const candidates = await KnowledgeChunk.aggregate([

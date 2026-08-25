@@ -1,8 +1,41 @@
+const { GoogleGenAI } = require("@google/genai");
+const { wrapAIServiceError } = require("../utils/aiServiceError");
+
+// gemini-3.6-flash (the full Flash model) turned out to carry only a 20-requests/day
+// free quota — discovered by hitting it during real testing, not documented anywhere
+// obvious. gemini-3.5-flash-lite has a much more generous free daily allowance and,
+// re-verified directly (both the fabricated-fact groundedness test and a real-question
+// quality check), follows the grounding/tone instructions just as reliably. Kept
+// deliberately different from safetyService.js's classifier model (gemini-3.1-flash-
+// lite) — Google tracks free-tier limits per model, so the two still don't compete for
+// the same daily allowance.
+const GENERATION_MODEL = "gemini-3.5-flash-lite";
+
+// Returned verbatim, with no Gemini call at all, whenever ragService.js found nothing
+// relevant (see the empty-context guard in generateReply below). Deliberately the same
+// wording as the system prompt's own instruction for a partial-context "I don't know"
+// case, so the tone is identical regardless of which path produced it.
+const NO_CONTEXT_REPLY =
+  "I don't have verified information about that in my current sources yet. It's best to ask a trusted adult, teacher, or doctor about this one!";
+
+const SYSTEM_PROMPT = `You are Mira, a warm and supportive health-education assistant inside a menstrual health app for teenage girls in Cambodia.
+
+Answer the user's question using ONLY the reference material provided below. Do not use any other knowledge, even if you already know more about the topic — only the material given to you counts as trustworthy here.
+
+If the reference material does not contain enough information to answer the question, say so honestly instead of guessing — for example: "I don't have verified information about that yet. It's best to ask a trusted adult, teacher, or doctor."
+
+Keep your tone warm, encouraging, and extra polite — like a caring older sister who has all the time in the world for this conversation. Start by gently acknowledging how the user might be feeling before sharing the facts, avoid clinical jargon, and never make the user feel embarrassed or ashamed for asking. Write a fuller, more complete answer — aim for around two short paragraphs (roughly 5 to 8 sentences total) so the user feels genuinely supported and informed, not rushed through a one-liner.
+
+You are not a doctor. Do not diagnose conditions or recommend specific medications or dosages. For anything that sounds serious or medical, gently suggest talking to a trusted adult or healthcare professional.`;
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
 /**
- * Placeholder AI reply generator. Returns a canned response so POST /api/ai/ask is
- * fully functional end-to-end (creates a real AIConversation record) before the real
- * Gemini call is wired in. Mirrors the frontend's own prototype fallback in
- * assistant.tsx's generateReply().
+ * Generates Mira's reply to `question`, grounded strictly in `context` (the text
+ * ragService.retrieveContext already retrieved and score-filtered). Per Security
+ * Design 14.5, only `question`/`context` ever reach Gemini — never the user's name,
+ * email, or any other identifying detail (aiController.js's job, not this function's,
+ * but worth restating here since this is the actual boundary that policy protects).
  */
 async function generateReply(question, context) {
   // No Gemini call at all when nothing relevant was retrieved — a guaranteed-safe,
@@ -14,11 +47,16 @@ async function generateReply(question, context) {
 
   const prompt = `Reference material:\n${context}\n\nQuestion: ${question}`;
 
-  const response = await ai.models.generateContent({
-    model: GENERATION_MODEL,
-    contents: prompt,
-    config: { systemInstruction: SYSTEM_PROMPT },
-  });
+  let response;
+  try {
+    response = await ai.models.generateContent({
+      model: GENERATION_MODEL,
+      contents: prompt,
+      config: { systemInstruction: SYSTEM_PROMPT },
+    });
+  } catch (err) {
+    throw wrapAIServiceError(err, "geminiService.generateReply");
+  }
 
   return response.text;
 }

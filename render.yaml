@@ -1,0 +1,37 @@
+# Render Blueprint for the Mira backend.
+# Deploy: Render dashboard -> New -> Blueprint -> pick this repo. Render reads this
+# file, creates the service below, and prompts for every envVar marked sync: false
+# (kept out of git on purpose — see backend/.gitignore for the same secrets).
+#
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: mira-backend
+    runtime: node
+    plan: free # bump to "starter" ($7/mo) to remove the 15-min-idle spin-down/cold start
+    region: oregon # pick whatever region is closest to your users/demo audience
+    rootDir: backend # this is a monorepo — the Node app lives in backend/
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true # redeploy on every push to the connected branch
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000 # Render injects its own PORT at runtime; this is just a documented default
+      - key: MONGODB_URI
+        sync: false # MongoDB Atlas connection string
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false # paste with literal \n sequences, same as your local .env — config/firebase.js already un-escapes them
+      - key: FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false # comma-separated origins allowed to call the API from a browser, e.g. https://your-app.expo.dev

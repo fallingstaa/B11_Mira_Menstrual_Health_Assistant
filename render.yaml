@@ -25,12 +25,8 @@ services:
         sync: false # MongoDB Atlas connection string
       - key: GEMINI_API_KEY
         sync: false
-      - key: FIREBASE_PROJECT_ID
-        sync: false
-      - key: FIREBASE_CLIENT_EMAIL
-        sync: false
-      - key: FIREBASE_PRIVATE_KEY
-        sync: false # paste with literal \n sequences, same as your local .env — config/firebase.js already un-escapes them
+      - key: FIREBASE_SERVICE_ACCOUNT_BASE64
+        sync: false # base64 of the full service account JSON — see config/firebase.js; avoids pasting a multi-line PEM key into this dashboard
       - key: FIREBASE_STORAGE_BUCKET
         sync: false
       - key: ALLOWED_ORIGINS

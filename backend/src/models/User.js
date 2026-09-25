@@ -22,8 +22,8 @@ const userSchema = new mongoose.Schema(
       dateOfBirth: { type: Date, default: null },
       preferredLanguage: { type: String, default: "English" },
       firstPeriodDate: { type: Date, default: null },
-      // Set by POST /api/profile/avatar (actual photo upload, stored in Firebase
-      // Storage) and cleared by DELETE /api/profile/avatar — see profileController.js.
+      // Set by POST /api/profile/avatar (actual photo upload, stored in MongoDB's
+      // Avatar collection) and cleared by DELETE /api/profile/avatar — see profileController.js.
       // Also settable directly via PUT /api/profile/me for the rarer case of pointing
       // this at a URL hosted somewhere else entirely (see the .nullable() note on
       // profileValidators.js's updateProfileSchema), though that path only ever

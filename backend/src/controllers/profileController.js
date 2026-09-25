@@ -1,10 +1,10 @@
 const { getAuth } = require("firebase-admin/auth");
-const { getStorage } = require("firebase-admin/storage");
 
 const firebaseApp = require("../../config/firebase");
 const MenstrualRecord = require("../models/MenstrualRecord");
 const AIConversation = require("../models/AIConversation");
 const NotificationReminder = require("../models/NotificationReminder");
+const Avatar = require("../models/Avatar");
 const User = require("../models/User");
 const { success, successMessage, error } = require("../utils/responseHandler");
 const asyncHandler = require("../utils/asyncHandler");
@@ -81,6 +81,7 @@ const deleteMe = asyncHandler(async (req, res) => {
     MenstrualRecord.deleteMany({ userId }),
     AIConversation.deleteMany({ userId }),
     NotificationReminder.deleteMany({ userId }),
+    Avatar.deleteMany({ userId }),
   ]);
   await User.deleteOne({ _id: userId });
 
@@ -162,43 +163,27 @@ const changeEmail = asyncHandler(async (req, res) => {
   return success(res, { userId: req.user._id, email: req.user.email });
 });
 
-// Every avatar route below shares one fixed Storage path per user (no filename/
-// timestamp in it) — a fresh upload always overwrites the same object rather than
-// accumulating a new one per upload, so there's never a separate "delete the old one"
-// step to forget and no extra field needed to track which path is current.
-function avatarStoragePath(userId) {
-  return `avatars/${userId}`;
-}
-
 /**
- * Saves/replaces the signed-in user's profile photo in Firebase Storage, then points
- * profile.avatarUrl at this same API's own GET /api/profile/avatar — not a raw Google
- * Cloud Storage URL. Two things made that the simpler call over the alternatives:
- *  - Making the object public (bucket ACL) can outright fail on a bucket with Uniform
- *    Bucket-Level Access enabled (the default for newer Firebase Storage buckets), and
- *    would otherwise leave the photo world-readable by anyone with the URL — no auth.
- *  - A signed URL avoids that, but Google Cloud Storage caps V4 signed URLs at 7 days;
- *    unusable for something meant to just keep working indefinitely.
- * Proxying through our own already-authenticated endpoint sidesteps both: no bucket
- * ACL config to get right, no expiry to refresh, and it's already access-controlled
- * (see getAvatar below) the same way every other profile field already is.
+ * Saves/replaces the signed-in user's profile photo in MongoDB (see models/Avatar.js —
+ * one doc per user, so a new upload overwrites the old one in place), then points
+ * profile.avatarUrl at this same API's own GET /api/profile/avatar. Stored in Mongo
+ * rather than Firebase Storage: avatars are capped at 5MB (uploadAvatar.js) — well under
+ * Mongo's 16MB document limit — and this avoids needing a separate Storage bucket
+ * (and the billing plan Firebase requires to create one).
  */
 const uploadAvatar = asyncHandler(async (req, res) => {
-  const bucket = getStorage(firebaseApp).bucket();
-  const file = bucket.file(avatarStoragePath(req.user._id));
+  await Avatar.findOneAndUpdate(
+    { userId: req.user._id },
+    { contentType: req.file.mimetype, data: req.file.buffer },
+    { upsert: true }
+  );
 
-  await file.save(req.file.buffer, {
-    metadata: { contentType: req.file.mimetype },
-    resumable: false, // a single ≤5MB request-body buffer, not worth resumable upload's overhead
-  });
-
-  // req.get("host") reflects whichever host:port the client actually used to reach
-  // this server (localhost for the simulator, a LAN IP for a physical device over
-  // Expo Go — same value mobile-app's own EXPO_PUBLIC_API_URL would already be set
-  // to), so this resolves correctly in dev without hardcoding a public domain this
-  // backend doesn't have yet. Would need `app.set("trust proxy", ...)` to stay correct
-  // once this ever sits behind a real reverse proxy/load balancer.
-  const avatarUrl = `${req.protocol}://${req.get("host")}/api/profile/avatar`;
+  // req.get("host") reflects whichever host the client actually used to reach this
+  // server (a LAN IP in dev, the Render domain in production). Behind a reverse proxy
+  // like Render's, req.protocol reports "http" even though the client used https, and
+  // iOS refuses to load an http image — so prefer the proxy's X-Forwarded-Proto.
+  const protocol = req.get("x-forwarded-proto")?.split(",")[0] || req.protocol;
+  const avatarUrl = `${protocol}://${req.get("host")}/api/profile/avatar`;
   req.user.profile.avatarUrl = avatarUrl;
   await req.user.save();
 
@@ -206,46 +191,29 @@ const uploadAvatar = asyncHandler(async (req, res) => {
 });
 
 /**
- * Streams the signed-in user's own avatar back — never anyone else's; there's no
+ * Sends the signed-in user's own avatar back — never anyone else's; there's no
  * :userId in this route at all, same "always req.user, never a param" shape as
  * GET /api/profile/me. 404s (not an empty 200) when nothing's been uploaded yet, so a
  * client can tell "no photo set" apart from "something went wrong loading it".
  */
 const getAvatar = asyncHandler(async (req, res) => {
-  const bucket = getStorage(firebaseApp).bucket();
-  const file = bucket.file(avatarStoragePath(req.user._id));
+  const avatar = await Avatar.findOne({ userId: req.user._id });
+  if (!avatar) return error(res, "No avatar set for this account", 404);
 
-  const [exists] = await file.exists();
-  if (!exists) return error(res, "No avatar set for this account", 404);
-
-  const [metadata] = await file.getMetadata();
-  res.setHeader("Content-Type", metadata.contentType || "application/octet-stream");
-  // Fine to cache briefly client-side — a fresh upload overwrites this same path, so a
+  res.setHeader("Content-Type", avatar.contentType);
+  // Fine to cache briefly client-side — a fresh upload replaces this same doc, so a
   // long/forever cache would risk showing a stale photo after a real change.
   res.setHeader("Cache-Control", "private, max-age=300");
-
-  file.createReadStream().on("error", (err) => {
-    console.error("[profile] avatar stream error:", err.message);
-    if (!res.headersSent) error(res, "Failed to load avatar", 500);
-  }).pipe(res);
+  return res.send(avatar.data);
 });
 
 /**
- * Removes the signed-in user's avatar — deletes the Storage object and clears
- * profile.avatarUrl together, so the two can never drift out of sync (a URL pointing
- * at a since-deleted file, or a file with nothing referencing it anymore).
+ * Removes the signed-in user's avatar — deletes the stored photo and clears
+ * profile.avatarUrl together, so the two can never drift out of sync. Not an error if
+ * there was nothing to delete.
  */
 const deleteAvatar = asyncHandler(async (req, res) => {
-  const bucket = getStorage(firebaseApp).bucket();
-  const file = bucket.file(avatarStoragePath(req.user._id));
-
-  try {
-    await file.delete();
-  } catch (err) {
-    // Already gone (e.g. a retried request, or it was never actually uploaded despite
-    // avatarUrl somehow being set) is fine — anything else genuinely failed.
-    if (err.code !== 404) throw err;
-  }
+  await Avatar.deleteOne({ userId: req.user._id });
 
   req.user.profile.avatarUrl = null;
   await req.user.save();

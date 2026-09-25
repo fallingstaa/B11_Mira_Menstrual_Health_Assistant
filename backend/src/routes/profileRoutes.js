@@ -114,10 +114,9 @@ router.put("/email", validate(changeEmailSchema), changeEmail);
  *     tags: [Profile]
  *     summary: Upload/replace the signed-in user's profile photo
  *     description: >
- *       Stores the photo in Firebase Storage and points `profile.avatarUrl` at this same API's own
- *       `GET /api/profile/avatar` — not a raw Google Cloud Storage URL (see profileController.js's `uploadAvatar`
- *       for why: bucket-ACL public access can fail on newer buckets, and signed URLs cap out at 7 days). A new
- *       upload overwrites the previous photo in place — there's only ever one avatar object per user, no history.
+ *       Stores the photo in MongoDB (Avatar collection) and points `profile.avatarUrl` at this same API's own
+ *       `GET /api/profile/avatar`, which serves the image only to its owner. A new upload overwrites the previous
+ *       photo in place — there's only ever one avatar per user, no history.
  *       Max 5MB, JPEG/PNG/WebP only.
  *     requestBody:
  *       required: true

@@ -183,7 +183,9 @@ const uploadAvatar = asyncHandler(async (req, res) => {
   // like Render's, req.protocol reports "http" even though the client used https, and
   // iOS refuses to load an http image — so prefer the proxy's X-Forwarded-Proto.
   const protocol = req.get("x-forwarded-proto")?.split(",")[0] || req.protocol;
-  const avatarUrl = `${protocol}://${req.get("host")}/api/profile/avatar`;
+  // ?v= changes on every upload so a client that cached the previous photo by URL (iOS does)
+  // fetches the new one — the route itself ignores the query string.
+  const avatarUrl = `${protocol}://${req.get("host")}/api/profile/avatar?v=${Date.now()}`;
   req.user.profile.avatarUrl = avatarUrl;
   await req.user.save();
 

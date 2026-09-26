@@ -8,13 +8,17 @@
     "scheme": "mira",
     "userInterfaceStyle": "light",
     "android": {
+      "package": "com.mira.menstrualhealthassistant",
       "adaptiveIcon": {
         "backgroundColor": "#AD0E38",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -44,11 +48,22 @@
           "photosPermission": "Mira uses your photos to let you set a profile picture."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e18fa6a9-862c-4b9b-b007-ae4efd01f01d"
+      }
+    },
+    "owner": "liya1001"
   }
 }

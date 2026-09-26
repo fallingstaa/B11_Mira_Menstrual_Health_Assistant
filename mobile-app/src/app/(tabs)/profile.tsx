@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { File } from 'expo-file-system';
 import { router } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
 import { Alert, Image, Pressable, Share, StyleSheet, View } from 'react-native';
@@ -224,14 +225,12 @@ export default function ProfileScreen() {
           await apiRequest('/profile/avatar', { method: 'DELETE' });
         } else {
           const formData = new FormData();
-          // React Native's fetch accepts this {uri,name,type} shape for a file field, unlike
-          // web's File/Blob — apiUpload leaves Content-Type unset so fetch generates the
-          // multipart boundary itself.
-          formData.append('photo', {
-            uri: details.photoUri,
-            name: `avatar.${guessImageMimeType(details.photoUri).split('/')[1]}`,
-            type: guessImageMimeType(details.photoUri),
-          } as unknown as Blob);
+          // Expo's fetch (the global one since SDK 57) no longer accepts React Native's old
+          // {uri,name,type} file shape — it throws "Unsupported FormDataPart implementation".
+          // expo-file-system's File is a Blob-compatible object it can read directly.
+          // apiUpload leaves Content-Type unset so fetch generates the multipart boundary itself.
+          const mimeType = guessImageMimeType(details.photoUri);
+          formData.append('photo', new File(details.photoUri), `avatar.${mimeType.split('/')[1]}`);
           const { avatarUrl } = await apiUpload<{ avatarUrl: string }>('/profile/avatar', formData);
           // Point at the backend's own proxy URL, not the local file:// URI just uploaded from —
           // that local file won't exist on this device forever, and only the backend's URL is
@@ -259,7 +258,10 @@ export default function ProfileScreen() {
       </AppText>
 
       <Card style={styles.profileCard}>
-        {avatarUri ? (
+        {/* Only mounted once the auth header is ready — an <Image> that fires its first request
+            without it gets a 401 from GET /api/profile/avatar, and iOS then caches that failure
+            by URL, so the photo stays blank even after the header arrives a moment later. */}
+        {avatarUri && avatarAuthHeader ? (
           <Image source={{ uri: avatarUri, headers: avatarAuthHeader }} style={styles.avatarImage} />
         ) : (
           <IconCircle color={Colors.tint100} size={64}>

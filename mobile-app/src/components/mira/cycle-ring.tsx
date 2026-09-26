@@ -22,7 +22,7 @@ export function CycleRing({ currentDay, cycleLength, size = 130 }: Props) {
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size}>
         <Circle cx={center} cy={center} r={radius} stroke="rgba(255,255,255,0.35)" strokeWidth={strokeWidth} fill="none" />
-        <G rotation="-90" origin={`${center}, ${center}`}>
+        <G transform={`rotate(-90 ${center} ${center})`}>
           <Circle
             cx={center}
             cy={center}

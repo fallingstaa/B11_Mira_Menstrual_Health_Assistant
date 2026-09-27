@@ -51,7 +51,7 @@ export default function RootLayout() {
               <Stack.Screen name="prediction" />
               <Stack.Screen name="notifications" />
               <Stack.Screen name="checkin-history" />
-              <Stack.Screen name="article/[id]" />
+              <Stack.Screen name="education/[topicId]" />
             </Stack>
             <DevNotificationTester />
           </AppStateProvider>

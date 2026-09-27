@@ -10,9 +10,24 @@ const { retrieveContext } = require("../services/ragService");
 const { generateReply } = require("../services/geminiService");
 const { isUnsafeQuestion, SAFETY_DISCLAIMER } = require("../services/safetyService");
 
+// How long a gap in questions still counts as "the same conversation" for
+// geminiService.js's turnNumber (see buildSystemPrompt there) — long enough that a normal
+// back-and-forth stays one session, short enough that coming back tomorrow reads as a fresh
+// one and gets the full warm greeting again, not the "later turn" style.
+const SESSION_WINDOW_MS = 30 * 60 * 1000;
+
 const ask = asyncHandler(async (req, res) => {
   const { question } = req.body;
   if (!question || !question.trim()) return error(res, "question is required", 400);
+
+  // This question's position among this user's questions in the current session — 1 for their
+  // first question in the last 30 minutes, 2 for their second, etc. (see SESSION_WINDOW_MS).
+  // Purely a style signal for geminiService.js's buildSystemPrompt, nothing else reads this.
+  const recentCount = await AIConversation.countDocuments({
+    userId: req.user._id,
+    createdAt: { $gte: new Date(Date.now() - SESSION_WINDOW_MS) },
+  });
+  const turnNumber = recentCount + 1;
 
   // Deliberately not sending req.user's name/email to the AI — only the question and
   // whatever the RAG layer retrieves (Security Design 14.5).
@@ -30,7 +45,7 @@ const ask = asyncHandler(async (req, res) => {
     aiResponse = SAFETY_DISCLAIMER;
   } else {
     ({ context, sourceIds } = await retrieveContext(question));
-    aiResponse = await generateReply(question, context);
+    aiResponse = await generateReply(question, context, turnNumber);
   }
 
   const turn = await AIConversation.create({

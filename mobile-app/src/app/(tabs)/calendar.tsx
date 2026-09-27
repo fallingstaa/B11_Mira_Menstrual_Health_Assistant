@@ -171,21 +171,29 @@ export default function CalendarScreen() {
     [multiSelectedDays],
   );
 
-  const handleBatchRecord = (details: { flow?: string; symptoms: string[]; mood: string[] }) => {
+  // Waits for the server to actually accept the batch before applying any local marks or closing
+  // the sheet — see BatchRecordModal's own comment on why. These days lock the moment they save,
+  // so showing them as already-locked-and-saved before the server confirmed would be actively
+  // misleading if the save then turned out to be rejected.
+  const handleBatchRecord = async (details: { flow?: string; symptoms: string[]; mood: string[] }) => {
     const dates = multiSelectedDays;
+
+    try {
+      await commitDays(
+        dates.map((date) => ({ date, flow: details.flow, symptoms: details.symptoms, mood: details.mood })),
+        'calendar',
+      );
+    } catch (err) {
+      Alert.alert("Couldn't save", err instanceof Error ? err.message : 'Please try again.');
+      throw err;
+    }
+
     dates.forEach((date) => {
       togglePeriodDay(date); // each of these is guaranteed unrecorded — see selectDay's guard above
       updatePeriodDayEntry(date, { flow: details.flow, symptoms: details.symptoms, mood: details.mood });
     });
     setMultiSelectedDays([]);
     setBatchModalVisible(false);
-
-    commitDays(
-      dates.map((date) => ({ date, flow: details.flow, symptoms: details.symptoms, mood: details.mood })),
-      'calendar',
-    ).catch((err) => {
-      Alert.alert("Couldn't save to the server", err instanceof Error ? err.message : 'Please try again.');
-    });
   };
 
   return (
@@ -341,13 +349,20 @@ export default function CalendarScreen() {
                 onSetFlow={(flow) => updatePeriodDayEntry(selected, { flow })}
                 onToggleSymptom={toggleSelectedSymptom}
                 onToggleMood={toggleSelectedMood}
-                onRecord={() => {
+                onRecord={async () => {
+                  // Waits for the actual save before closing the popup or letting PeriodDayEditor
+                  // show "Recorded!" — see that component's own comment on why. On failure, this
+                  // throws (caught here to Alert, and by PeriodDayEditor to skip the false
+                  // success), and the popup stays open with the day exactly as it was.
+                  try {
+                    await commitDays([{ ...selectedEntry, date: selected }], 'calendar');
+                  } catch (err) {
+                    Alert.alert("Couldn't save", err instanceof Error ? err.message : 'Please try again.');
+                    throw err;
+                  }
                   // Brief pause so the "Recorded!" confirmation is actually visible before the
                   // popup closes — same ~1s pattern the rest of the app uses after a save.
                   setTimeout(() => setDayEditorVisible(false), 1100);
-                  commitDays([{ ...selectedEntry, date: selected }], 'calendar').catch((err) => {
-                    Alert.alert("Couldn't save to the server", err instanceof Error ? err.message : 'Please try again.');
-                  });
                 }}
               />
             </ScrollView>

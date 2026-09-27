@@ -1,4 +1,4 @@
-const { computeCycleUpdate, groupIntoEpisodes } = require("./cycleCacheService");
+const { computeCycleUpdate, groupIntoEpisodes, validatePeriodDayConsistency } = require("./cycleCacheService");
 
 /** Builds a fake MenstrualRecord — computeCycleUpdate/groupIntoEpisodes only ever read `.date`
  *  and `.isPeriodEnd`, so that's all this needs (no Mongo document required). */
@@ -145,5 +145,63 @@ describe("computeCycleUpdate", () => {
     // Gaps: Jun1->Jul1 = 30, Jul1->Aug1 = 31 (see the dateHelper test for why July isn't 28/30).
     const update = computeCycleUpdate([rec(2026, 6, 1, true), rec(2026, 7, 1, true), rec(2026, 8, 1)], null, null);
     expect(update.averageCycleLength).toBe(Math.round((30 + 31) / 2));
+  });
+});
+
+/** An incoming period-day write, same date shape as rec() plus the isPeriodDay flag the real
+ *  request body always carries. */
+function incomingDay(y, m, d, isPeriodEnd = false) {
+  return { date: new Date(y, m - 1, d), isPeriodDay: true, isPeriodEnd };
+}
+
+// PERIOD-004: Calendar's day-by-day editor writes one day at a time, in *separate* requests —
+// `existing` below is what's already saved (built the same way recomputeCycleCache groups
+// history); `incoming` is what this write is trying to add. That within-one-request-only check
+// is menstrualValidators.test.js's batchUpsertRecordSchema tests, a deliberately different check.
+describe("validatePeriodDayConsistency", () => {
+  describe("an end day before an already-open period's start", () => {
+    it("❌ rejects it", () => {
+      // Sep 5-7 already saved as an open period (no end yet); Sep 3 now marked as End day.
+      const existing = [rec(2026, 9, 5), rec(2026, 9, 6), rec(2026, 9, 7)];
+      expect(validatePeriodDayConsistency(existing, [incomingDay(2026, 9, 3, true)])).toMatch(/end date can't be before the start/i);
+    });
+
+    it("✅ accepts the normal flow: end day is the last day of its own still-open period", () => {
+      const existing = [rec(2026, 9, 5), rec(2026, 9, 6)];
+      expect(validatePeriodDayConsistency(existing, [incomingDay(2026, 9, 7, true)])).toBeNull();
+    });
+
+    it("✅ accepts a single-day period (start and end are the same day, nothing saved yet)", () => {
+      expect(validatePeriodDayConsistency([], [incomingDay(2026, 9, 5, true)])).toBeNull();
+    });
+
+    it("✅ accepts a new, isolated end day once the previous period was already properly closed", () => {
+      // Aug 20-24 already closed and saved; Sep 3 is a separate short period, not a conflict.
+      const existing = [rec(2026, 8, 20), rec(2026, 8, 24, true)];
+      expect(validatePeriodDayConsistency(existing, [incomingDay(2026, 9, 3, true)])).toBeNull();
+    });
+
+    // Regression: an earlier draft of this check compared a closed episode's end against the
+    // *regrouped, full* picture's next episode — which is true by construction for ANY two
+    // chronologically-ordered episodes, so it wrongly rejected the ordinary, very common case of
+    // "I've had a period before, and I'm currently on my period now."
+    it("✅ does not misfire on a past closed period + a currently open one — adding a day to the open period", () => {
+      const existing = [
+        rec(2026, 8, 20),
+        rec(2026, 8, 21),
+        rec(2026, 8, 22),
+        rec(2026, 8, 23),
+        rec(2026, 8, 24, true), // closed
+        rec(2026, 9, 20),
+        rec(2026, 9, 21),
+        rec(2026, 9, 22), // currently open, no end yet
+      ];
+      // Just extending the already-open Sep period by one more day — nothing to reject.
+      expect(validatePeriodDayConsistency(existing, [incomingDay(2026, 9, 23)])).toBeNull();
+    });
+  });
+
+  it("✅ is a no-op with nothing saved and nothing incoming", () => {
+    expect(validatePeriodDayConsistency([], [])).toBeNull();
   });
 });

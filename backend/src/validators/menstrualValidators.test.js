@@ -1,6 +1,8 @@
-const { cycleSetupSchema } = require("./menstrualValidators");
+const { cycleSetupSchema, batchUpsertRecordSchema } = require("./menstrualValidators");
 
 const accepts = (input) => cycleSetupSchema.safeParse(input).success;
+
+const acceptsBatch = (records) => batchUpsertRecordSchema.safeParse({ source: "record", records }).success;
 
 describe("UT-003 — cycleSetupSchema length boundaries", () => {
   describe("manualCycleLength (21–45, whole numbers)", () => {
@@ -59,5 +61,45 @@ describe("UT-004 — cycleSetupSchema required input", () => {
     expect(result.success).toBe(true);
     expect(result.data).toEqual({ manualCycleLength: 32 });
     expect(result.data).not.toHaveProperty("manualPeriodLength");
+  });
+});
+
+describe("PERIOD-004 — batchUpsertRecordSchema rejects an end date before the start date", () => {
+  it("❌ rejects Start 05 Sep / End 01 Sep", () => {
+    expect(
+      acceptsBatch([
+        { date: "2026-09-05", isPeriodDay: true },
+        { date: "2026-09-04", isPeriodDay: true },
+        { date: "2026-09-03", isPeriodDay: true },
+        { date: "2026-09-02", isPeriodDay: true },
+        { date: "2026-09-01", isPeriodDay: true, isPeriodEnd: true },
+      ]),
+    ).toBe(false);
+  });
+
+  it("✅ accepts Start 05 Sep / End 05 Sep (a single-day period)", () => {
+    expect(acceptsBatch([{ date: "2026-09-05", isPeriodDay: true, isPeriodEnd: true }])).toBe(true);
+  });
+
+  it("✅ accepts Start 05 Sep / End 07 Sep", () => {
+    expect(
+      acceptsBatch([
+        { date: "2026-09-05", isPeriodDay: true },
+        { date: "2026-09-06", isPeriodDay: true },
+        { date: "2026-09-07", isPeriodDay: true, isPeriodEnd: true },
+      ]),
+    ).toBe(true);
+  });
+
+  it("reports a clear message, not just a generic validation failure", () => {
+    const result = batchUpsertRecordSchema.safeParse({
+      source: "record",
+      records: [
+        { date: "2026-09-05", isPeriodDay: true },
+        { date: "2026-09-01", isPeriodDay: true, isPeriodEnd: true },
+      ],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error.issues[0].message).toMatch(/end date can't be before its start date/i);
   });
 });

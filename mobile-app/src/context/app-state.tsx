@@ -233,13 +233,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // a flash of the previous account's data.
   useEffect(() => {
     if (!user) {
-      setHydrated(false);
-      setPeriodEntries({});
-      setIsBeginnerState(false);
-      setManualCycleLength(DEFAULT_CYCLE_LENGTH);
-      setManualPeriodDuration(DEFAULT_PERIOD_DURATION);
-      setUserAgeState(null);
-      setFirstQuestionAsked(false);
+      // Deferred to a microtask (not called synchronously in the effect body) so this can't
+      // trigger a cascading render.
+      Promise.resolve().then(() => {
+        setHydrated(false);
+        setPeriodEntries({});
+        setIsBeginnerState(false);
+        setManualCycleLength(DEFAULT_CYCLE_LENGTH);
+        setManualPeriodDuration(DEFAULT_PERIOD_DURATION);
+        setUserAgeState(null);
+        setFirstQuestionAsked(false);
+      });
       return;
     }
 
@@ -410,6 +414,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const commitDays = async (entries: CommitDayEntry[], source: RecordSource) => {
     if (entries.length === 0) return;
+    // quiet: true — every caller of commitDays now awaits it in its own try/catch and shows its
+    // own Alert on failure (day-locked 409s, PERIOD-004's invalid-range 400s, etc. are all
+    // genuinely expected, handled failures, not bugs). Without this, apiRequest logs every one
+    // with console.error, which pops React Native's intrusive red-screen LogBox overlay right on
+    // top of the friendly Alert — a *handled* validation rejection then still looks like a crash.
     await apiRequest('/menstrual/records/batch', {
       method: 'POST',
       body: {
@@ -424,6 +433,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           notes: e.notes || undefined,
         })),
       },
+      quiet: true,
     });
   };
 

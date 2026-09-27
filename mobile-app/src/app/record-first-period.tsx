@@ -40,6 +40,7 @@ export default function RecordFirstPeriodScreen() {
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [activeDay, setActiveDay] = useState(today);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState('Period recorded!');
   const [knowsCycleLength, setKnowsCycleLength] = useState<CycleLengthAnswer>(null);
   const [cycleLength, setCycleLength] = useState(DEFAULT_CYCLE_LENGTH);
@@ -97,19 +98,30 @@ export default function RecordFirstPeriodScreen() {
     setCursor(new Date(date.getFullYear(), date.getMonth(), 1));
   };
 
-  const finish = (message: string) => {
-    setSuccessMessage(message);
-    setSaved(true);
+  // Waits for the server to actually accept the batch before showing success/navigating to Home —
+  // see record.tsx's comment on the same fix for why this used to be able to show a false success
+  // (and send the user away) ahead of a real, late-arriving rejection they'd have no way back to.
+  const finish = async (message: string) => {
+    if (saving) return;
 
     // Syncs every day marked this session in one batch, each with whatever flow/symptoms/mood/
     // end-day details it individually has (unlike Calendar's batch-backfill or record.tsx's
     // range, which apply one shared set of details to every date) — this screen lets each day
     // be edited independently via the PeriodDayEditor below, so a uniform patch would lose that.
     if (markedCount > 0) {
-      commitDays(Object.values(periodEntries), 'record_first_period').catch((err) => {
-        Alert.alert("Couldn't save to the server", err instanceof Error ? err.message : 'Please try again.');
-      });
+      setSaving(true);
+      try {
+        await commitDays(Object.values(periodEntries), 'record_first_period');
+      } catch (err) {
+        Alert.alert("Couldn't save", err instanceof Error ? err.message : 'Please try again.');
+        return;
+      } finally {
+        setSaving(false);
+      }
     }
+
+    setSuccessMessage(message);
+    setSaved(true);
   };
 
   /**
@@ -178,11 +190,13 @@ export default function RecordFirstPeriodScreen() {
             <Button
               label="Done"
               icon={<Ionicons name="checkmark" size={16} color={Colors.textOnPrimary} />}
-              // Deliberately never disabled — finishing with nothing marked yet is a valid
-              // outcome (same as "Skip for now" elsewhere in setup), not something to block.
-              // A disabled Save button here — greyed out and unresponsive until a day was
-              // tapped first — is what made this feel "hard to click".
+              // Deliberately never disabled by markedCount — finishing with nothing marked yet is
+              // a valid outcome (same as "Skip for now" elsewhere in setup), not something to
+              // block. A disabled Save button here — greyed out and unresponsive until a day was
+              // tapped first — is what made this feel "hard to click". `loading` (not `disabled`)
+              // guards against a double-tap firing two saves while the first is still in flight.
               onPress={() => finish(markedCount === 0 ? 'All good — come back any time.' : 'Saved! Keep logging as it continues.')}
+              loading={saving}
               style={styles.footerButton}
             />
           </View>

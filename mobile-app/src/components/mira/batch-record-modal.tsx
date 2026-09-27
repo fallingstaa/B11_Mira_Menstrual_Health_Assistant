@@ -15,7 +15,9 @@ type Props = {
   /** The selected days, already sorted ascending — none of them have an existing entry yet. */
   dates: Date[];
   onCancel: () => void;
-  onConfirm: (details: { flow?: string; symptoms: string[]; mood: string[] }) => void;
+  /** Returns a promise so this modal can wait for the real save result before closing itself —
+   *  the caller should reject (and show its own error) on failure. */
+  onConfirm: (details: { flow?: string; symptoms: string[]; mood: string[] }) => Promise<void> | void;
 };
 
 /**
@@ -33,14 +35,18 @@ export function BatchRecordModal({ visible, dates, onCancel, onConfirm }: Props)
   const [flow, setFlow] = useState('');
   const [symptoms, setSymptoms] = useState<string[]>([]);
   const [mood, setMood] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
 
   // Fresh fields every time this opens on a new selection — otherwise leftover choices from a
-  // previous batch would silently carry over into the next one.
+  // previous batch would silently carry over into the next one. Deferred to a microtask (not
+  // called synchronously in the effect body) so this can't trigger a cascading render.
   useEffect(() => {
     if (visible) {
-      setFlow('');
-      setSymptoms([]);
-      setMood([]);
+      Promise.resolve().then(() => {
+        setFlow('');
+        setSymptoms([]);
+        setMood([]);
+      });
     }
   }, [visible]);
 
@@ -57,7 +63,26 @@ export function BatchRecordModal({ visible, dates, onCancel, onConfirm }: Props)
       "These are from a previous month, so they lock for editing the moment you save — they feed your future predictions, so accuracy matters. Double-check everything above before confirming.",
       [
         { text: 'Go back', style: 'cancel' },
-        { text: 'Confirm & Save', onPress: () => onConfirm({ flow: flow || undefined, symptoms, mood }) },
+        {
+          text: 'Confirm & Save',
+          // Waits for the real save result before this modal closes — it used to close (via the
+          // caller clearing its own visible state) the instant this was tapped, regardless of
+          // whether the server actually accepted it, so a rejection (e.g. these days conflicting
+          // with an already-logged period) still showed nothing wrong here and only surfaced as a
+          // late, separate Alert after the sheet had already slid away. The caller shows that
+          // Alert; this just keeps the sheet open (with a spinner) until it knows which one to do.
+          onPress: async () => {
+            setSaving(true);
+            try {
+              await onConfirm({ flow: flow || undefined, symptoms, mood });
+            } catch {
+              // The caller already alerted with the real error — just stop spinning and let the
+              // user try again or cancel.
+            } finally {
+              setSaving(false);
+            }
+          },
+        },
       ],
     );
   };
@@ -108,6 +133,7 @@ export function BatchRecordModal({ visible, dates, onCancel, onConfirm }: Props)
               label={`Record ${dates.length} Day${dates.length === 1 ? '' : 's'}`}
               icon={<Ionicons name="save-outline" size={16} color={Colors.textOnPrimary} />}
               onPress={handleRecord}
+              loading={saving}
               style={styles.recordButton}
             />
           </ScrollView>

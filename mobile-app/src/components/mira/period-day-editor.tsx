@@ -30,8 +30,12 @@ type Props = {
   onToggleSymptom: (key: string) => void;
   /** Multi-select, same shape as onToggleSymptom — a day can have more than one mood at once. */
   onToggleMood: (key: string) => void;
-  /** Called when "Record" is pressed — everything is already saved live, this is just the user's confirm step. */
-  onRecord?: () => void;
+  /**
+   * Called when "Record" is pressed, to actually sync this day to the backend. Returns a promise
+   * so this component can wait for the real result before showing "Recorded!" — the caller should
+   * reject (and show its own error) on failure; this component never assumes success on its own.
+   */
+  onRecord?: () => Promise<void> | void;
   delay?: number;
 };
 
@@ -95,8 +99,12 @@ export function PeriodDayEditor({
   // (reopening something that already exists is always an update, even before this particular
   // visit touches anything), then set on every actual Record press from then on.
   const [recordedKeys, setRecordedKeys] = useState<Record<string, boolean>>({});
+  // Deferred to a microtask (not called synchronously in the effect body) so this can't trigger a
+  // cascading render.
   useEffect(() => {
-    if (entry) setRecordedKeys((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+    Promise.resolve().then(() => {
+      if (entry) setRecordedKeys((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   const hasBeenRecorded = !!recordedKeys[key];
@@ -144,9 +152,25 @@ export function PeriodDayEditor({
     onToggleMood(moodKey);
   };
 
-  const handleRecord = () => {
+  const [saving, setSaving] = useState(false);
+
+  // Waits for onRecord's actual server result before claiming "Recorded!" — this used to set
+  // justRecorded/recordedKeys immediately, regardless of whether the sync onRecord kicks off
+  // actually succeeded, so a backend rejection (e.g. an invalid end-day range) still showed a
+  // false success here, with the caller's error Alert arriving late and separately. The user had
+  // to reopen the day to discover it silently hadn't actually saved.
+  const handleRecord = async () => {
     ensureMarked(); // covers Record being pressed with no fields touched at all
-    onRecord?.();
+    setSaving(true);
+    try {
+      await onRecord?.();
+    } catch {
+      // The caller already shows its own Alert with the real error message — nothing more to do
+      // here except not claim success.
+      return;
+    } finally {
+      setSaving(false);
+    }
     setJustRecorded(true);
     setRecordedKeys((prev) => ({ ...prev, [key]: true }));
     // Collapse back to the plain calendar-style view — the details stay saved, just tucked away.
@@ -243,6 +267,7 @@ export function PeriodDayEditor({
             label={justRecorded ? 'Recorded!' : hasBeenRecorded ? 'Update Record' : 'Record'}
             icon={<Ionicons name={justRecorded ? 'checkmark-circle' : 'save-outline'} size={16} color={Colors.textOnPrimary} />}
             onPress={handleRecord}
+            loading={saving}
             style={justRecorded ? styles.recordButtonSuccess : styles.recordButton}
           />
         </>

@@ -36,6 +36,7 @@ export default function CheckinScreen() {
   const [symptoms, setSymptoms] = useState<string[]>(existingEntry?.symptoms ?? []);
   const [mood, setMood] = useState<string[]>(existingEntry?.mood ?? []);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const toggleSymptom = (key: string) => {
     setSymptoms((prev) => (prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]));
@@ -51,20 +52,31 @@ export default function CheckinScreen() {
     return () => clearTimeout(t);
   }, [saved]);
 
-  const handleSave = () => {
+  // Waits for the server to actually accept the save before showing "Check-in saved!" — see
+  // record.tsx's comment on the same fix for why this used to be able to show a false success
+  // ahead of a real, late-arriving rejection.
+  const handleSave = async () => {
+    if (saving) return;
+
+    setSaving(true);
+    try {
+      await commitDays(
+        [{ date: today, isPeriodDay: !!existingEntry, isEnd: existingEntry?.isEnd, flow: existingEntry?.flow, symptoms, mood }],
+        'checkin',
+      );
+    } catch (err) {
+      Alert.alert("Couldn't save", err instanceof Error ? err.message : 'Please try again.');
+      return;
+    } finally {
+      setSaving(false);
+    }
+
     // Only touches symptoms/mood on the existing entry (if today's already a period day) —
     // never its isEnd/flow status, and never creates a new period-day entry if today wasn't one.
     if (existingEntry) {
       updatePeriodDayEntry(today, { symptoms, mood });
     }
     setSaved(true);
-
-    commitDays(
-      [{ date: today, isPeriodDay: !!existingEntry, isEnd: existingEntry?.isEnd, flow: existingEntry?.flow, symptoms, mood }],
-      'checkin',
-    ).catch((err) => {
-      Alert.alert("Couldn't save to the server", err instanceof Error ? err.message : 'Please try again.');
-    });
   };
 
   return (
@@ -75,6 +87,7 @@ export default function CheckinScreen() {
           label="Save Check-in"
           icon={<Ionicons name="checkmark-circle-outline" size={16} color={Colors.textOnPrimary} />}
           onPress={handleSave}
+          loading={saving}
         />
       }>
       <ModalHeader title="Daily Check-in" subtitle={`Today, ${formatShort(today)} · takes a few seconds`} />

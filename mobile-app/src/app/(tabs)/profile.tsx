@@ -11,10 +11,10 @@ import { IconCircle } from '@/components/mira/icon-circle';
 import { LanguagePickerModal } from '@/components/mira/language-picker-modal';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { SettingsRow } from '@/components/mira/settings-row';
-import { auth } from '@/config/firebase';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
-import { apiRequest, apiUpload } from '@/utils/api'; //specail part 
+import { useAvatarAuthHeader } from '@/hooks/use-avatar-header';
+import { apiRequest, apiUpload } from '@/utils/api'; //specail part
 
 type Preferences = { pushNotifications: boolean; checkinReminders: boolean };
 
@@ -47,10 +47,7 @@ export default function ProfileScreen() {
   // Kept as its own bit of state (not just read off `profile.avatarUrl`) so it can update
   // optimistically the moment a new photo's picked, same pattern as the rest of this screen.
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
-  // GET /api/profile/avatar is authenticated like every other endpoint here — a bare <Image
-  // uri=.../> can't attach an Authorization header, so this is fetched alongside the avatar URL
-  // and handed to <Image source={{ uri, headers }}> instead.
-  const [avatarAuthHeader, setAvatarAuthHeader] = useState<{ Authorization: string } | undefined>(undefined);
+  const avatarAuthHeader = useAvatarAuthHeader(avatarUri);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
 
@@ -76,20 +73,6 @@ export default function ProfileScreen() {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!avatarUri) {
-      setAvatarAuthHeader(undefined);
-      return;
-    }
-    auth.currentUser?.getIdToken().then((token) => {
-      if (!cancelled && token) setAvatarAuthHeader({ Authorization: `Bearer ${token}` });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [avatarUri]);
 
   /** Flips the switch immediately, saves in the background, rolls back if the save fails. */
   const updatePreference = async (patch: Partial<Preferences>) => {

@@ -18,7 +18,10 @@ const MAX_AGE = 100;
 
 function registerErrorMessage(err: unknown): string {
   const code = (err as { code?: string })?.code;
-  if (code === 'auth/email-already-in-use') return 'An account with this email already exists.';
+  // AUTH-011: checked first, and matched before 'auth/invalid-email' below — a genuinely
+  // duplicate email is a distinct Firebase error code from a malformed one, never both at once,
+  // so this can't fall through to the "looks off" message for a real duplicate.
+  if (code === 'auth/email-already-in-use') return 'This email is already registered. Please log in instead.';
   if (code === 'auth/invalid-email') return 'That email address looks off — check for a typo.';
   if (code === 'auth/weak-password') return 'Password must be at least 8 characters.';
   return 'Something went wrong creating your account. Please try again.';

@@ -6,7 +6,7 @@ const { success, successMessage, error } = require("../utils/responseHandler");
 const asyncHandler = require("../utils/asyncHandler");
 const { toDayKey, isValidDateString, isSameMonth, isPastMonth } = require("../utils/dateHelper");
 const { predictNextCycle, buildPhases, cyclePhase, currentCycleDay } = require("../services/predictionService");
-const { recomputeCycleCache } = require("../services/cycleCacheService");
+const { recomputeCycleCache, checkPeriodDayAgainstHistory } = require("../services/cycleCacheService");
 const { resolveAsOf } = require("../utils/devClock");
 
 /**
@@ -97,6 +97,15 @@ const upsertRecord = asyncHandler(async (req, res) => {
 
   const lockError = await checkRecordEditable(req.user._id, dayKey, resolveAsOf(req));
   if (lockError) return error(res, lockError.message, lockError.statusCode);
+
+  // PERIOD-004: reject a period day that contradicts this user's already-saved history (an end
+  // date before an already-open period's start, or a new period day the day right after an
+  // already-closed one) — see checkPeriodDayAgainstHistory's own comment for why this can't be
+  // a request-shape (Zod) check alone. Checked, and rejected, before any write below.
+  const consistencyError = await checkPeriodDayAgainstHistory(req.user._id, [
+    { date: dayKey, isPeriodDay: !!isPeriodDay, isPeriodEnd: !!isPeriodEnd },
+  ]);
+  if (consistencyError) return error(res, consistencyError, 400);
 
   // If this day is being flagged as the period's end, un-flag any other day for this
   // user first — mirrors setPeriodEndDay() in the app's client-side state today.
@@ -213,6 +222,16 @@ const batchUpsertRecords = asyncHandler(async (req, res) => {
     const lockError = await checkRecordEditable(req.user._id, r.date, today);
     if (lockError) return error(res, `${r.date}: ${lockError.message}`, lockError.statusCode);
   }
+
+  // PERIOD-004: same history-consistency check as the single-record upsert above — Calendar's
+  // day-by-day editor goes through this batch endpoint too (as a one-entry batch), so this is
+  // the only codepath that actually catches it. Checked, and rejected, before the transaction
+  // below writes anything.
+  const consistencyError = await checkPeriodDayAgainstHistory(
+    req.user._id,
+    records.map((r) => ({ date: toDayKey(r.date), isPeriodDay: r.isPeriodDay, isPeriodEnd: r.isPeriodEnd })),
+  );
+  if (consistencyError) return error(res, consistencyError, 400);
 
   const session = await mongoose.startSession();
   let saved;

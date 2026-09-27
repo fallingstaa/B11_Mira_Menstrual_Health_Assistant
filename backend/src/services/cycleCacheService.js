@@ -51,6 +51,80 @@ function groupIntoEpisodes(records) {
 }
 
 /**
+ * PERIOD-004 — two ways an *incoming* period-day write can contradict a user's *pre-existing*
+ * history, checked only against episodes built from history that doesn't include whatever this
+ * write is about to change (see checkPeriodDayAgainstHistory below).
+ *
+ *  Case 1 (cross-request form) — an incoming end day can't be before the start of a period
+ *  that's *already open* in saved history: e.g. a period already saved as running from Sep 5
+ *  onward can't suddenly be "ended" on Sep 3, a day before it even started. Same "a single period
+ *  can't end before it starts" rule as menstrualValidators.js's batchUpsertRecordSchema, just
+ *  checked cross-request instead of within one submission — Calendar's day-by-day editor writes
+ *  one day at a time, in *separate* requests, so by the time a user taps an earlier day and marks
+ *  it End, the later, already-open period is sitting in MongoDB from a previous request,
+ *  invisible to a same-request-only check. This has to run in the controller (with DB access),
+ *  not the Zod schema.
+ *
+ *  A period day landing the very next calendar day after an already-closed End — e.g. Sep 2
+ *  marked End, then Sep 3 logged as a plain period day right after it — is rejected too:
+ *  groupIntoEpisodes' own rule ("the very next record always starts a new episode, no matter how
+ *  close in time") would otherwise silently treat that as a second period starting the very next
+ *  day, which reads to a user as "my period didn't actually end on the 2nd." This is deliberately
+ *  narrow — only a zero-gap, next-day continuation — so Case 2 (a genuinely new period record,
+ *  however many times a month, as long as there's at least one real rest day) is never blocked.
+ *
+ * Pure — `existingRecords` is this user's saved history *excluding* any date `incoming` is about
+ * to overwrite (so editing an already-saved day is never compared against its own old value), and
+ * `incoming` is the period-day writes this request is about to make. Both are unit-testable
+ * without a database; see checkPeriodDayAgainstHistory below for the DB-fetching wrapper
+ * controllers actually call.
+ *
+ * Returns an error message for the first contradiction found, or null if nothing incoming
+ * contradicts the existing history.
+ */
+function validatePeriodDayConsistency(existingRecords, incoming) {
+  const existingEpisodes = groupIntoEpisodes(existingRecords);
+  const openEpisode = existingEpisodes.find((ep) => !ep.hasExplicitEnd);
+
+  for (const r of incoming) {
+    if (!r.isPeriodDay) continue;
+
+    if (r.isPeriodEnd && openEpisode && r.date < openEpisode.start) {
+      return "A period's end date can't be before the start of your current, still-open period.";
+    }
+
+    const closedRightBefore = existingEpisodes.some((ep) => ep.hasExplicitEnd && daysBetween(ep.end, r.date) === 1);
+    if (closedRightBefore) {
+      return "Can't log a period day the day right after one that's already marked as an end — pick a later date, or remove that end mark first.";
+    }
+  }
+
+  return null;
+}
+
+/**
+ * DB-aware wrapper around validatePeriodDayConsistency — fetches this user's saved period-day
+ * history, excludes whatever date(s) `incomingRecords` is about to write (an edit shouldn't be
+ * compared against its own pre-edit value), and validates the incoming writes against what's left.
+ *
+ * Skips the DB round-trip entirely when nothing in this request touches a period/spotting day at
+ * all — e.g. a Check-in write, which explicitly passes isPeriodDay: false.
+ */
+async function checkPeriodDayAgainstHistory(userId, incomingRecords) {
+  const incomingPeriodDays = incomingRecords.filter((r) => r.isPeriodDay);
+  if (incomingPeriodDays.length === 0) return null;
+
+  const incomingDates = new Set(incomingPeriodDays.map((r) => r.date.getTime()));
+  const saved = await MenstrualRecord.find({ userId, isPeriodDay: true }).select("date isPeriodEnd");
+  const existingRecords = saved
+    .filter((r) => !incomingDates.has(r.date.getTime()))
+    .map((r) => ({ date: r.date, isPeriodEnd: r.isPeriodEnd }))
+    .sort((a, b) => a.date - b.date);
+
+  return validatePeriodDayConsistency(existingRecords, incomingPeriodDays);
+}
+
+/**
  * Pure computation half of recomputeCycleCache below — given a user's sorted `isPeriodDay`
  * records plus their manual onboarding seeds, returns the full `User.cycle` update object.
  * Split out from the Mongo I/O specifically so this — the actual "given this record history,
@@ -165,4 +239,10 @@ async function recomputeCycleCache(userId) {
   });
 }
 
-module.exports = { recomputeCycleCache, computeCycleUpdate, groupIntoEpisodes };
+module.exports = {
+  recomputeCycleCache,
+  computeCycleUpdate,
+  groupIntoEpisodes,
+  validatePeriodDayConsistency,
+  checkPeriodDayAgainstHistory,
+};

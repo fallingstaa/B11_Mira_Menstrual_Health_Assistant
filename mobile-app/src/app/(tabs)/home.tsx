@@ -2,13 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/mira/app-text';
 import { Button } from '@/components/mira/button';
 import { Card } from '@/components/mira/card';
 import { CycleRing } from '@/components/mira/cycle-ring';
-import { EducationCard } from '@/components/mira/education-card';
+import { EducationTopicCard } from '@/components/mira/education/topic-card';
 import { GettingStartedCard, GettingStartedStep } from '@/components/mira/getting-started-card';
 import { HealthTipCard } from '@/components/mira/health-tip-card';
 import { IconCircle } from '@/components/mira/icon-circle';
@@ -16,13 +16,17 @@ import { MascotMini } from '@/components/mira/mascot';
 import { QuickAction } from '@/components/mira/quick-action';
 import { ScreenContainer } from '@/components/mira/screen-container';
 import { SectionHeader } from '@/components/mira/section-header';
-import { articles, healthTips } from '@/constants/mock-data';
+import { educationTopics } from '@/constants/education-hub';
+import { healthTips } from '@/constants/mock-data';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
+import { useAvatarAuthHeader } from '@/hooks/use-avatar-header';
 import { apiRequest } from '@/utils/api';
 import { daysBetween, greeting, parseIsoDate } from '@/utils/date';
 
 type HomeProfile = { name: string; avatarUrl: string | null };
+
+const featuredTopics = educationTopics.slice(1, 3);
 
 /**
  * Shape of `GET /api/menstrual/prediction` this screen actually reads — currentDay/phase are
@@ -55,6 +59,7 @@ export default function HomeScreen() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [dataLoaded, setDataLoaded] = useState(false);
   const onboardingDone = firstPeriodRecorded && firstQuestionAsked;
+  const avatarAuthHeader = useAvatarAuthHeader(profile?.avatarUrl);
 
   // Refetches every time Home regains focus, not just on first mount — otherwise recording a
   // period on Calendar/checkin/etc. and tabbing back here would keep showing whatever the hero
@@ -132,11 +137,17 @@ export default function HomeScreen() {
         <>
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
-              <IconCircle color={Colors.tint100} size={46}>
-                <AppText variant="h3" color={Colors.primary}>
-                  {avatarInitial}
-                </AppText>
-              </IconCircle>
+              {/* Real photo once it's loaded and its auth header is ready — see profile.tsx for
+                  why the header is needed and why this can't just render immediately. */}
+              {profile?.avatarUrl && avatarAuthHeader ? (
+                <Image source={{ uri: profile.avatarUrl, headers: avatarAuthHeader }} style={styles.avatarImage} />
+              ) : (
+                <IconCircle color={Colors.tint100} size={46}>
+                  <AppText variant="h3" color={Colors.primary}>
+                    {avatarInitial}
+                  </AppText>
+                </IconCircle>
+              )}
               <View>
                 <AppText variant="h2">Hi, {profile?.name}</AppText>
                 <AppText variant="small">
@@ -286,8 +297,16 @@ export default function HomeScreen() {
 
           <View style={styles.section}>
             <SectionHeader title="Learn something new" actionLabel="See all" onAction={() => router.push('/(tabs)/education')} />
-            {articles.slice(0, 2).map((article, i) => (
-              <EducationCard key={article.id} article={article} delay={i * 60} onPress={() => router.push({ pathname: '/article/[id]', params: { id: article.id } })} />
+            {/* Topics 2 & 3 (Understanding Your Cycle, Period Hygiene) — more relevant here than
+                Topic 1 (Your First Period), since this section only shows once that's already logged. */}
+            {featuredTopics.map((topic, i) => (
+              <EducationTopicCard
+                key={topic.id}
+                topic={topic}
+                number={educationTopics.indexOf(topic) + 1}
+                delay={i * 60}
+                onPress={() => router.push({ pathname: '/education/[topicId]', params: { topicId: topic.id } })}
+              />
             ))}
           </View>
         </>
@@ -369,6 +388,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  avatarImage: { width: 46, height: 46, borderRadius: 23 },
   bellButton: {
     width: 44,
     height: 44,

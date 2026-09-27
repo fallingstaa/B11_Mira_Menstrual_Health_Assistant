@@ -1,5 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
-
 /**
  * Static mock data powering the UI-only Mira prototype.
  * Nothing here touches the backend — swap for real API/state once endpoints exist.
@@ -175,130 +173,6 @@ export const notifications: NotificationItem[] = [
   },
 ];
 
-export type Article = {
-  id: string;
-  category: 'Basics' | 'Hygiene' | 'Symptoms' | 'Myths';
-  title: string;
-  summary: string;
-  readTime: string;
-  /** Ionicon name (no emoji anywhere in this app) — see education-card.tsx / article/[id].tsx. */
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-  tint: string;
-  body: string[];
-};
-
-export const articles: Article[] = [
-  {
-    id: 'a1',
-    category: 'Basics',
-    title: 'What Actually Happens During Your Period?',
-    summary: 'A simple, judgement-free walkthrough of the menstrual cycle.',
-    readTime: '4 min read',
-    icon: 'water',
-    color: '#AD0E38',
-    tint: '#FDF1F4',
-    body: [
-      'Your menstrual cycle is your body\'s natural, healthy monthly process — it is not something to be embarrassed about.',
-      'On average a cycle lasts about 28 days, but anywhere from 21 to 35 days is completely normal, especially in your first few years of getting your period.',
-      'The "period" itself — when you bleed — usually lasts 3 to 7 days. Mira tracks this for you automatically once you start logging.',
-    ],
-  },
-  {
-    id: 'a2',
-    category: 'Hygiene',
-    title: 'Pad, Tampon, or Cup? Finding What Works',
-    summary: 'A friendly comparison of period products for beginners.',
-    readTime: '5 min read',
-    icon: 'options-outline',
-    color: '#2FB8A6',
-    tint: '#E7F8F5',
-    body: [
-      'There is no single "right" period product — it is about what feels comfortable and safe for you.',
-      'Pads are the easiest to start with: stick them to your underwear and change every 4–6 hours.',
-      'Tampons and cups take a little practice but can be great for sports or swimming once you feel ready.',
-    ],
-  },
-  {
-    id: 'a3',
-    category: 'Hygiene',
-    title: 'How Often Should You Change Your Pad?',
-    summary: 'Simple rules to stay fresh, comfortable, and healthy.',
-    readTime: '3 min read',
-    icon: 'time-outline',
-    color: '#2FB8A6',
-    tint: '#E7F8F5',
-    body: [
-      'As a rule of thumb, change your pad every 4–6 hours, even on lighter days.',
-      'Always wash your hands before and after, and dispose of used products wrapped in tissue or a bag.',
-      'If in doubt — change it. There is no such thing as "too often".',
-    ],
-  },
-  {
-    id: 'a4',
-    category: 'Symptoms',
-    title: 'Cramps 101: Why They Happen & What Helps',
-    summary: 'Understand period pain and gentle ways to ease it.',
-    readTime: '4 min read',
-    icon: 'medkit-outline',
-    color: '#E8A23A',
-    tint: '#FDF3E3',
-    body: [
-      'Cramps happen because your uterus contracts to help shed its lining — that muscle activity can feel like a dull ache or sharp pinch.',
-      'A warm compress, gentle stretching, staying hydrated, and light movement can all help.',
-      'If pain ever stops you from going about your day, it is worth talking to a trusted adult or doctor.',
-    ],
-  },
-  {
-    id: 'a5',
-    category: 'Symptoms',
-    title: 'Mood Swings Are Real — Here\'s Why',
-    summary: 'The hormone science behind feeling extra emotional.',
-    readTime: '3 min read',
-    icon: 'heart-outline',
-    color: '#E8A23A',
-    tint: '#FDF3E3',
-    body: [
-      'Hormones like estrogen and progesterone rise and fall throughout your cycle, and that can affect your mood.',
-      'Feeling extra sensitive, tired, or irritable before your period is common and has a name: PMS.',
-      'Logging your mood in Mira helps you notice your own patterns over time.',
-    ],
-  },
-  {
-    id: 'a6',
-    category: 'Myths',
-    title: '5 Period Myths You Should Stop Believing',
-    summary: 'Busting common misconceptions with real facts.',
-    readTime: '4 min read',
-    icon: 'ban-outline',
-    color: '#8B7CF6',
-    tint: '#F0EDFE',
-    body: [
-      'Myth: you can\'t swim on your period. Fact: you absolutely can, with the right product.',
-      'Myth: periods should always be exactly 28 days apart. Fact: cycles vary, especially in your first couple of years.',
-      'Myth: period blood is "dirty". Fact: it is simply blood and tissue from your uterine lining.',
-    ],
-  },
-  {
-    id: 'a7',
-    category: 'Basics',
-    title: 'The 4 Seasons of Your Body',
-    summary: 'Your cycle moves through four seasons every month — here\'s what each one means for your energy, mood, and focus.',
-    readTime: '6 min read',
-    icon: 'leaf-outline',
-    color: '#AD0E38',
-    tint: '#FDF1F4',
-    body: [
-      'Ever notice how some weeks you feel unstoppable, and others you just want to curl up under a blanket? That\'s not random — your body actually moves through four distinct "seasons" every single cycle, each with its own hormones, energy levels, and even the kind of day it\'s best suited for. Getting to know your own seasons can answer a lot of "why do I feel like this today?" questions before you even ask them.',
-      'Winter — Menstrual Phase (Days 1–5). Your period starts here, as your body sheds the uterine lining it built up the month before. Estrogen and progesterone are both at their lowest point of the whole cycle, which is a big part of why energy can dip and cramps or fatigue show up. Think of this as your body\'s actual rest season — gentle movement like walking or stretching, warm iron-rich meals, and giving yourself permission to slow down all genuinely help.',
-      'Spring — Follicular Phase (Days 6–13). Once your period ends, your body starts preparing to release an egg, and estrogen begins climbing steadily. That rising estrogen works like a shot of new-season energy — mood tends to brighten, brain fog lifts, and both your body and your motivation start waking back up. It\'s a great stretch for starting new projects, learning something new, or easing back into exercise.',
-      'Summer — Ovulation Phase (Days 14–17). This is your body\'s peak: an egg is released from the ovary, and estrogen along with luteinizing hormone hit their highest levels of the entire month. Most people feel their most energetic, confident, and social right around here. If something takes real focus or people-energy — a big workout, a presentation, a social event — this is often the sweet spot to schedule it.',
-      'Autumn — Luteal Phase (Days 18–28). After ovulation, progesterone rises to help the body prepare for a possible pregnancy. If that doesn\'t happen, both progesterone and estrogen fall sharply right before your next period — and that drop is what\'s actually behind a lot of classic PMS: bloating, cravings, irritability, lower energy. Like autumn winding down toward winter, this is a good phase for finishing up tasks already in motion, getting organized, and switching to lower-impact movement like strength training or Pilates.',
-      'Every body runs on its own timing, so these day ranges are a general guide, not a rulebook — especially in your first couple of years of having a period, when cycles are still finding their rhythm. Mira\'s Prediction tab already scales this exact phase breakdown to your own logged cycle length, so you can check what season you\'re actually in today, personalized to you.',
-    ],
-  },
-];
-
 export type ChatSource = { sourceId: string; sourceName: string; sourceUrl: string };
 
 export type ChatMessage = {
@@ -309,27 +183,6 @@ export type ChatMessage = {
   /** Only ever set on a real `from: 'mira'` reply that actually cited something — see assistant.tsx. */
   sources?: ChatSource[];
 };
-
-export const initialChat: ChatMessage[] = [
-  {
-    id: 'c1',
-    from: 'mira',
-    text: "Hi Amara! I'm Mira. I'm here to answer any period or body questions — no question is too weird!",
-    time: '9:41 AM',
-  },
-  {
-    id: 'c2',
-    from: 'user',
-    text: 'Is it normal for my cycle to be a bit different every month?',
-    time: '9:42 AM',
-  },
-  {
-    id: 'c3',
-    from: 'mira',
-    text: 'Totally normal! Especially in your first few years of getting your period, cycles can range from 21–35 days. Mira will keep learning your pattern the more you log.',
-    time: '9:42 AM',
-  },
-];
 
 export const chatSuggestions = [
   'Why do I get cramps?',

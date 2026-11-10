@@ -140,10 +140,10 @@ export default function AssistantScreen() {
                 <TypingDots />
               </View>
             </Animated.View>
-          ) : null
+          ) : undefined
         }
         ListFooterComponent={
-          hasAsked ? null : (
+          hasAsked ? undefined : (
             <View style={styles.hero}>
               <Mascot size={96} waving={false} />
               <AppText variant="small" center style={styles.heroText}>

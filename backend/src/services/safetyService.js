@@ -9,6 +9,12 @@ const { wrapAIServiceError } = require("../utils/aiServiceError");
 // against the same daily allowance instead of one against each of two.
 const CLASSIFIER_MODEL = "gemini-3.1-flash-lite";
 
+// Used only when CLASSIFIER_MODEL itself is overloaded or rate-limited (503/429) —
+// Google has had sustained "high demand" outages on gemini-3.1-flash-lite that made
+// every /api/ai/ask fail even though the answer model was healthy. Falling back to the
+// answer model costs one extra request against its allowance, but only in that case.
+const FALLBACK_CLASSIFIER_MODEL = "gemini-3.5-flash-lite";
+
 const CLASSIFIER_PROMPT = `You are a strict content classifier for a teen menstrual health education app.
 
 Determine whether the user's question is asking for either of the following:
@@ -35,16 +41,34 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
  * flagged here never touches the knowledge base or the answer-writing model at all,
  * the same "safe by construction" principle as geminiService.js's empty-context skip.
  */
+function classify(model, question) {
+  return ai.models.generateContent({
+    model,
+    contents: question,
+    config: { systemInstruction: CLASSIFIER_PROMPT },
+  });
+}
+
+/** Overloaded (503) or rate-limited (429) — worth trying another model. */
+function isCapacityError(err) {
+  return err?.status === 503 || err?.status === 429;
+}
+
 async function isUnsafeQuestion(question) {
   let response;
   try {
-    response = await ai.models.generateContent({
-      model: CLASSIFIER_MODEL,
-      contents: question,
-      config: { systemInstruction: CLASSIFIER_PROMPT },
-    });
+    response = await classify(CLASSIFIER_MODEL, question);
   } catch (err) {
-    throw wrapAIServiceError(err, "safetyService.isUnsafeQuestion");
+    if (!isCapacityError(err)) throw wrapAIServiceError(err, "safetyService.isUnsafeQuestion");
+    console.warn(
+      `Classifier ${CLASSIFIER_MODEL} unavailable (${err.status}), falling back to ${FALLBACK_CLASSIFIER_MODEL}`
+    );
+    try {
+      response = await classify(FALLBACK_CLASSIFIER_MODEL, question);
+    } catch (fallbackErr) {
+      // Still fail closed: never answer a question that couldn't be safety-checked.
+      throw wrapAIServiceError(fallbackErr, "safetyService.isUnsafeQuestion (fallback)");
+    }
   }
 
   return response.text.trim().toUpperCase().startsWith("BLOCK");

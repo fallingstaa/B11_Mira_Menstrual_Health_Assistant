@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 
+import i18n from '@/i18n';
+
 import { AppText } from '@/components/yumi/app-text';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import type { Source } from '@/constants/education-hub';
@@ -9,7 +11,7 @@ async function openSource(source: Source) {
   try {
     await Linking.openURL(source.url);
   } catch {
-    Alert.alert('Could not open the link', `Please try ${source.label} again later.`);
+    Alert.alert(i18n.t('education.linkErrorTitle'), i18n.t('education.linkErrorBody', { source: source.label }));
   }
 }
 
@@ -22,7 +24,7 @@ export function EducationSources({ sources, color }: { sources: Source[]; color:
           key={`${s.label}-${s.url}`}
           onPress={() => openSource(s)}
           accessibilityRole="link"
-          accessibilityLabel={`${s.label}, opens in your browser`}
+          accessibilityLabel={i18n.t('education.opensInBrowser', { source: s.label })}
           style={styles.row}>
           <Ionicons name="book-outline" size={18} color={color} />
           <AppText variant="bodyMedium" style={styles.label}>

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ReactNode, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Button } from '@/components/yumi/button';
@@ -69,6 +70,7 @@ export function PeriodDayEditor({
   onRecord,
   delay = 0,
 }: Props) {
+  const { t } = useTranslation();
   const isMarked = !!entry;
   const symptoms = entry?.symptoms ?? [];
   const moods = entry?.mood ?? [];
@@ -111,8 +113,8 @@ export function PeriodDayEditor({
 
   useEffect(() => {
     if (!justRecorded) return;
-    const t = setTimeout(() => setJustRecorded(false), 1400);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setJustRecorded(false), 1400);
+    return () => clearTimeout(timer);
   }, [justRecorded]);
 
   /** Marks this day if it isn't already — safe to call unconditionally before any field edit. */
@@ -181,8 +183,10 @@ export function PeriodDayEditor({
 
   const summaryParts: string[] = [];
   if (entry?.flow) summaryParts.push(flowLevels.find((f) => f.key === entry.flow)?.label ?? '');
-  if (entry?.symptoms.length) summaryParts.push(`${entry.symptoms.length} symptom${entry.symptoms.length === 1 ? '' : 's'}`);
-  if (entry?.mood.length) summaryParts.push(`${entry.mood.length} mood${entry.mood.length === 1 ? '' : 's'}`);
+  if (entry?.symptoms.length)
+    summaryParts.push(t(entry.symptoms.length === 1 ? 'dayEditor.symptomsOne' : 'dayEditor.symptomsOther', { n: entry.symptoms.length }));
+  if (entry?.mood.length)
+    summaryParts.push(t(entry.mood.length === 1 ? 'dayEditor.moodsOne' : 'dayEditor.moodsOther', { n: entry.mood.length }));
 
   return (
     <Card style={styles.card} delay={delay}>
@@ -199,17 +203,17 @@ export function PeriodDayEditor({
               style={styles.statusText}
               color={isMarked ? Colors.primary : Colors.textMuted}>
               {!isMarked
-                ? 'Not marked yet'
+                ? t('dayEditor.notMarked')
                 : // Kept short on purpose — the DAY TYPE box right below already spells out "Confirm
                   // below" on its own badge, so this just needs to say *that* it's unconfirmed, not
                   // repeat the instruction in full (that full sentence is what was wrapping/clipping).
                   !isDayTypeConfirmed
-                  ? 'Marked — not confirmed'
+                  ? t('dayEditor.notConfirmed')
                   : dayType === 'end'
-                    ? 'End day'
+                    ? t('dayEditor.endDay')
                     : dayType === 'spotting'
-                      ? 'Spotting'
-                      : 'Period day'}
+                      ? t('flow.spotting')
+                      : t('dayEditor.periodDay')}
             </AppText>
           </View>
           {!isExpanded && summaryParts.length > 0 && (
@@ -227,18 +231,18 @@ export function PeriodDayEditor({
         <>
           <View style={styles.divider} />
 
-          <ConfirmChipGroup label="DAY TYPE" confirmed={isDayTypeConfirmed} style={styles.dayTypeBox}>
+          <ConfirmChipGroup label={t('dayEditor.dayType')} confirmed={isDayTypeConfirmed} style={styles.dayTypeBox}>
             {/* Fixed 3-way row, not wrap or scroll — each chip is flex: 1, so the three always
                 divide one line evenly no matter the device width, shrinking together instead of
                 wrapping or needing a swipe. */}
             <View style={styles.fitRow}>
-              <Chip label="Period day" style={styles.fitChip} selected={isDayTypeConfirmed && dayType === 'period'} onPress={handleSetPeriodDay} />
-              <Chip label="Spotting" style={styles.fitChip} selected={isDayTypeConfirmed && dayType === 'spotting'} onPress={handleSetSpotting} />
-              <Chip label="End day" style={styles.fitChip} selected={isDayTypeConfirmed && dayType === 'end'} color={Colors.primaryDark} onPress={handleSetEndDay} />
+              <Chip label={t('dayEditor.periodDay')} style={styles.fitChip} selected={isDayTypeConfirmed && dayType === 'period'} onPress={handleSetPeriodDay} />
+              <Chip label={t('flow.spotting')} style={styles.fitChip} selected={isDayTypeConfirmed && dayType === 'spotting'} onPress={handleSetSpotting} />
+              <Chip label={t('dayEditor.endDay')} style={styles.fitChip} selected={isDayTypeConfirmed && dayType === 'end'} color={Colors.primaryDark} onPress={handleSetEndDay} />
             </View>
           </ConfirmChipGroup>
 
-          <FieldGroup label="Flow · optional">
+          <FieldGroup label={t('dayEditor.flowOptional')}>
             <FlowLevelPicker value={entry?.flow ?? ''} onChange={handleSetFlow} />
           </FieldGroup>
 
@@ -248,7 +252,7 @@ export function PeriodDayEditor({
               on its own. */}
           <CollapsibleChipField
             key={key + '-symptoms'}
-            label="Symptoms"
+            label={t('record.symptoms')}
             options={symptomOptions}
             selectedKeys={symptoms}
             onToggle={handleToggleSymptom}
@@ -256,7 +260,7 @@ export function PeriodDayEditor({
           />
           <CollapsibleChipField
             key={key + '-mood'}
-            label="Mood"
+            label={t('record.mood')}
             options={moodOptions}
             selectedKeys={moods}
             onToggle={handleToggleMood}
@@ -264,7 +268,7 @@ export function PeriodDayEditor({
           />
 
           <Button
-            label={justRecorded ? 'Recorded!' : hasBeenRecorded ? 'Update Record' : 'Record'}
+            label={justRecorded ? t('dayEditor.recorded') : hasBeenRecorded ? t('dayEditor.update') : t('calendar.record')}
             icon={<Ionicons name={justRecorded ? 'checkmark-circle' : 'save-outline'} size={16} color={Colors.textOnPrimary} />}
             onPress={handleRecord}
             loading={saving}

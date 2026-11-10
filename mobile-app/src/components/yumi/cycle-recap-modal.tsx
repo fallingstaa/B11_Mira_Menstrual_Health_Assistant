@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Chip } from '@/components/yumi/chip';
@@ -32,6 +33,7 @@ const moodLabelOf = (key: string) => moodOptions.find((m) => m.key === key)?.lab
  * message below instead of needing its own special case.
  */
 export function CycleRecapModal({ visible, cycle, entries, onClose }: Props) {
+  const { t } = useTranslation();
   const days = cycle
     ? eachDayInRange(cycle.start, cycle.end)
         .map((date) => entries[dateKey(date)])
@@ -57,8 +59,9 @@ export function CycleRecapModal({ visible, cycle, entries, onClose }: Props) {
                     {formatRange(cycle.start, cycle.end)}, {cycle.start.getFullYear()}
                   </AppText>
                   <AppText variant="small" numberOfLines={1} color={Colors.textMuted} style={styles.headerSubtitle}>
-                    {days.length} day{days.length === 1 ? '' : 's'} logged
-                    {cycle.cycleLength ? ` · ${cycle.cycleLength}-day cycle` : ' · First recorded cycle'}
+                    {t(days.length === 1 ? 'recap.loggedOne' : 'recap.loggedOther', { n: days.length })}
+                    {' · '}
+                    {cycle.cycleLength ? t('prediction.cycleOfDays', { n: cycle.cycleLength }) : t('prediction.firstCycle')}
                   </AppText>
                 </View>
                 <Pressable onPress={onClose} hitSlop={8}>
@@ -71,7 +74,7 @@ export function CycleRecapModal({ visible, cycle, entries, onClose }: Props) {
                   <View style={styles.emptyBox}>
                     <Ionicons name="document-text-outline" size={18} color={Colors.textMuted} />
                     <AppText variant="small" color={Colors.textMuted} style={styles.emptyText}>
-                      No day-by-day details were logged for this cycle — just the dates above.
+                      {t('recap.noDetails')}
                     </AppText>
                   </View>
                 ) : (
@@ -79,7 +82,7 @@ export function CycleRecapModal({ visible, cycle, entries, onClose }: Props) {
                     {symptomKeys.length > 0 && (
                       <View style={styles.tagSection}>
                         <AppText variant="caption" numberOfLines={1} style={styles.tagLabel}>
-                          SYMPTOMS NOTICED
+                          {t('recap.symptomsNoticed')}
                         </AppText>
                         <View style={styles.tagRow}>
                           {symptomKeys.map((key) => (
@@ -92,7 +95,7 @@ export function CycleRecapModal({ visible, cycle, entries, onClose }: Props) {
                     {moodKeys.length > 0 && (
                       <View style={styles.tagSection}>
                         <AppText variant="caption" numberOfLines={1} style={styles.tagLabel}>
-                          MOOD NOTICED
+                          {t('recap.moodNoticed')}
                         </AppText>
                         <View style={styles.tagRow}>
                           {moodKeys.map((key) => (
@@ -103,7 +106,7 @@ export function CycleRecapModal({ visible, cycle, entries, onClose }: Props) {
                     )}
 
                     <AppText variant="caption" numberOfLines={1} style={styles.tagLabel}>
-                      DAY BY DAY
+                      {t('recap.dayByDay')}
                     </AppText>
                     <View style={styles.dayList}>
                       {days.map((entry, i) => {
@@ -124,13 +127,13 @@ export function CycleRecapModal({ visible, cycle, entries, onClose }: Props) {
                                 <View style={styles.endTag}>
                                   <Ionicons name="flag" size={9} color={Colors.primaryDark} />
                                   <AppText variant="caption" color={Colors.primaryDark}>
-                                    End
+                                    {t('entries.end')}
                                   </AppText>
                                 </View>
                               )}
                             </View>
                             <AppText variant="small" numberOfLines={2} color={Colors.textMuted} style={styles.dayDetails}>
-                              {details || 'No extra details logged'}
+                              {details || t('recap.noExtra')}
                             </AppText>
                           </View>
                         );

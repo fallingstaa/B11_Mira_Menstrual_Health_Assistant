@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
 
@@ -22,6 +23,7 @@ import { useAuth } from '@/context/auth-context';
 export default function VerifyEmailScreen() {
   const { user, logout, resendVerificationEmail, refreshEmailVerified } = useAuth();
   const { refreshHydration } = useAppState();
+  const { t } = useTranslation();
   // Where to go once verified — register.tsx sends new sign-ups on to Cycle Basics;
   // anyone else (a returning unverified login, or api.ts's own redirect) lands on Home.
   const { next } = useLocalSearchParams<{ next?: string }>();
@@ -76,35 +78,35 @@ export default function VerifyEmailScreen() {
 
         <Animated.View entering={FadeInUp.duration(400).delay(100)} style={styles.textWrap}>
           <AppText variant="h1" center style={styles.title}>
-            Verify your email
+            {t('auth.verify.title')}
           </AppText>
           <AppText variant="body" color={Colors.textSecondary} center style={styles.subtitle}>
-            We sent a verification link to
+            {t('auth.verify.sentTo')}
           </AppText>
           <AppText variant="bodyMedium" center>
             {user?.email}
           </AppText>
           <AppText variant="body" color={Colors.textSecondary} center style={styles.subtitle}>
-            Tap the link in that email, then come back here.
+            {t('auth.verify.instructions')}
           </AppText>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(400).delay(180)} style={styles.actions}>
           {notYetVerified && (
             <AppText variant="small" color={Colors.warning} center style={styles.notYetText}>
-              Still not verified — check your inbox (and spam folder) for the link.
+              {t('auth.verify.notYet')}
             </AppText>
           )}
 
-          <Button label="I've verified — Continue" onPress={handleCheckAgain} loading={checking} style={styles.continueButton} />
+          <Button label={t('auth.verify.continue')} onPress={handleCheckAgain} loading={checking} style={styles.continueButton} />
 
           <View style={styles.resendRow}>
             <AppText variant="small" color={Colors.textSecondary}>
-              {resent ? 'Email resent — ' : "Didn't get the email? "}
+              {resent ? t('auth.emailResent') : t('auth.didntGetEmail')}
             </AppText>
             <Pressable hitSlop={6} onPress={handleResend} disabled={resending}>
               <AppText variant="small" color={Colors.primary}>
-                {resending ? 'Sending…' : 'Resend'}
+                {resending ? t('auth.sending') : t('auth.resend')}
               </AppText>
             </Pressable>
           </View>
@@ -117,7 +119,7 @@ export default function VerifyEmailScreen() {
               router.replace('/login');
             }}>
             <AppText variant="small" color={Colors.textMuted}>
-              Wrong account? Log out
+              {t('auth.verify.wrongAccount')}
             </AppText>
           </Pressable>
         </Animated.View>

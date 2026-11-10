@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -13,7 +14,7 @@ import { AppText } from '@/components/yumi/app-text';
 import { FlipCard } from '@/components/yumi/education/flip-card';
 import { useYumi } from '@/components/yumi/education/yumi-companion';
 import { IconCircle } from '@/components/yumi/icon-circle';
-import { RELIEF, SYMPTOM_CARDS } from '@/constants/education-activities';
+import { getActivities } from '@/constants/education-activities';
 import { Colors, Radius, Shadow, Spacing } from '@/constants/theme';
 
 /** Topic 4: pick a symptom, flip its card to see why it happens, then try the relief toolkit. */
@@ -28,6 +29,8 @@ export function SymptomActivity() {
 
 function SymptomFlip() {
   const say = useYumi();
+  const { t } = useTranslation();
+  const { SYMPTOM_CARDS } = getActivities();
   const [selected, setSelected] = useState(SYMPTOM_CARDS[0].id);
   const [flipped, setFlipped] = useState(false);
   const card = SYMPTOM_CARDS.find((c) => c.id === selected) ?? SYMPTOM_CARDS[0];
@@ -40,9 +43,9 @@ function SymptomFlip() {
 
   return (
     <View>
-      <AppText variant="h3">What are you feeling?</AppText>
+      <AppText variant="h3">{t('education.symptoms.title')}</AppText>
       <AppText variant="small" style={styles.hint}>
-        Pick a symptom, then tap the card to flip it.
+        {t('education.symptoms.hint')}
       </AppText>
 
       <View style={styles.tiles}>
@@ -68,13 +71,13 @@ function SymptomFlip() {
         height={360}
         flipped={flipped}
         onFlip={() => {
-          if (!flipped) say(`${card.label} are common. You are not alone in this.`);
+          if (!flipped) say(t('education.symptoms.sayCommon', { symptom: card.label }));
           setFlipped((f) => !f);
         }}
         frontColor={card.tint}
         backColor={Colors.surface}
         accent={card.color}
-        backLabel="Tap to flip back"
+        backLabel={t('education.tapToFlipBack')}
         front={
           <>
             <IconCircle color={Colors.surface} size={72}>
@@ -84,7 +87,7 @@ function SymptomFlip() {
               {card.label}
             </AppText>
             <AppText variant="small" center>
-              Tap to find out why it happens
+              {t('education.symptoms.findOut')}
             </AppText>
           </>
         }
@@ -93,7 +96,7 @@ function SymptomFlip() {
             <View style={styles.backHead}>
               <Ionicons name={card.icon} size={20} color={card.color} />
               <AppText variant="h3" color={card.color}>
-                Why {card.label.toLowerCase()}?
+                {t('education.symptoms.why', { symptom: card.label.toLowerCase() })}
               </AppText>
             </View>
             {card.why.map((w, i) => (
@@ -110,6 +113,8 @@ function SymptomFlip() {
 
 function ReliefToolkit() {
   const say = useYumi();
+  const { t } = useTranslation();
+  const { RELIEF } = getActivities();
   const [warm, setWarm] = useState(false);
   const [snack, setSnack] = useState<string | null>(null);
 
@@ -124,15 +129,15 @@ function ReliefToolkit() {
 
   return (
     <View style={styles.card}>
-      <AppText variant="h3">Relief toolkit</AppText>
+      <AppText variant="h3">{t('education.symptoms.reliefTitle')}</AppText>
       <AppText variant="small" style={styles.hint}>
-        Little things to try. Tap each one.
+        {t('education.symptoms.reliefHint')}
       </AppText>
 
       {/* Warm water bottle toggle */}
       <Pressable
         onPress={() => {
-          if (!warm) say('Warmth can feel so comforting.', 'cheer');
+          if (!warm) say(t('education.symptoms.sayWarm'), 'cheer');
           setWarm((w) => !w);
         }}
         accessibilityRole="switch"
@@ -183,7 +188,7 @@ function ReliefToolkit() {
                 key={c}
                 onPress={() => {
                   setSnack(on ? null : c);
-                  if (!on) say(`${c}. A tasty idea!`, 'cheer');
+                  if (!on) say(t('education.symptoms.saySnack', { snack: c }), 'cheer');
                 }}
                 style={[styles.chip, on && { backgroundColor: Colors.teal }]}>
                 <AppText variant="bodyMedium" color={on ? '#FFFFFF' : Colors.text}>
@@ -216,6 +221,7 @@ const BREATH_MS = 4000;
 /** A calm 4-second in / 4-second out pacer. A moment to relax with Yumi, not a medical treatment. */
 function BreathingPacer() {
   const say = useYumi();
+  const { t } = useTranslation();
   const [running, setRunning] = useState(false);
   const [phase, setPhase] = useState<'in' | 'out'>('in');
   const [round, setRound] = useState(0);
@@ -228,21 +234,21 @@ function BreathingPacer() {
       return;
     }
     scale.value = withTiming(phase === 'in' ? 1.15 : 0.7, { duration: BREATH_MS });
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       if (phase === 'in') {
         setPhase('out');
       } else if (round + 1 >= ROUNDS) {
         setRunning(false);
         setRound(0);
         setPhase('in');
-        say('Lovely. You took some slow, calm breaths.', 'cheer');
+        say(t('education.symptoms.sayBreaths'), 'cheer');
       } else {
         setRound((r) => r + 1);
         setPhase('in');
       }
     }, BREATH_MS);
-    return () => clearTimeout(t);
-  }, [running, phase, round, scale, say]);
+    return () => clearTimeout(timer);
+  }, [running, phase, round, scale, say, t]);
 
   const circle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -253,15 +259,15 @@ function BreathingPacer() {
           <Ionicons name="leaf" size={20} color={Colors.lavender} />
         </IconCircle>
         <View style={styles.flex}>
-          <AppText variant="h3">Calm breathing</AppText>
-          <AppText variant="small">A moment to relax with Yumi</AppText>
+          <AppText variant="h3">{t('education.symptoms.breathTitle')}</AppText>
+          <AppText variant="small">{t('education.symptoms.breathSubtitle')}</AppText>
         </View>
       </View>
 
       <View style={styles.pacerArea}>
         <Animated.View style={[styles.pacer, circle]}>
           <AppText variant="bodyMedium" color="#FFFFFF" center>
-            {running ? (phase === 'in' ? 'Breathe in' : 'Breathe out') : 'Ready?'}
+            {running ? (phase === 'in' ? t('education.symptoms.breatheIn') : t('education.symptoms.breatheOut')) : t('education.symptoms.ready')}
           </AppText>
         </Animated.View>
       </View>
@@ -274,7 +280,7 @@ function BreathingPacer() {
         }}
         accessibilityRole="button"
         style={styles.pacerButton}>
-        <AppText variant="button">{running ? `Stop (${round + 1} of ${ROUNDS})` : 'Start 5 slow breaths'}</AppText>
+        <AppText variant="button">{running ? t('education.symptoms.stop', { n: round + 1, total: ROUNDS }) : t('education.symptoms.start', { total: ROUNDS })}</AppText>
       </Pressable>
     </View>
   );

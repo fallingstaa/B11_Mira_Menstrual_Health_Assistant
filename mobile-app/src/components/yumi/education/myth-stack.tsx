@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { Animated as RNAnimated, PanResponder, Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, { FadeInUp, ZoomIn } from 'react-native-reanimated';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Button } from '@/components/yumi/button';
 import { FlipCard } from '@/components/yumi/education/flip-card';
 import { HeartBurst, useYumi } from '@/components/yumi/education/yumi-companion';
-import { MYTH_DECK } from '@/constants/education-activities';
+import { getActivities, type MythCard } from '@/constants/education-activities';
 import { Colors, Radius, Shadow, Spacing } from '@/constants/theme';
 
 type Guess = 'myth' | 'fact';
@@ -21,6 +22,8 @@ const CARD_HEIGHT = 420;
  */
 export function MythStack() {
   const say = useYumi();
+  const { t } = useTranslation();
+  const { MYTH_DECK } = getActivities();
   const [index, setIndex] = useState(0);
   const [guess, setGuess] = useState<Guess | null>(null);
   const [score, setScore] = useState(0);
@@ -38,9 +41,9 @@ export function MythStack() {
     if (correct) {
       setScore((s) => s + 1);
       setBurst((n) => n + 1);
-      say(card.isMyth ? 'Myth busted! Great instincts.' : 'Yes, that one is a fact!', 'cheer');
+      say(card.isMyth ? t('education.myths.sayBusted') : t('education.myths.sayFact'), 'cheer');
     } else {
-      say('Not quite, and that is okay. Now you know!');
+      say(t('education.myths.sayWrong'));
     }
   };
 
@@ -54,7 +57,7 @@ export function MythStack() {
     setGuess(null);
     setScore(0);
     setRound((r) => r + 1);
-    say('Round two! Let us see how you do.');
+    say(t('education.myths.sayRound'));
   };
 
   if (finished) {
@@ -62,12 +65,12 @@ export function MythStack() {
       <Animated.View entering={ZoomIn.springify().damping(12)} style={styles.finish}>
         <Ionicons name="trophy" size={44} color={Colors.warning} />
         <AppText variant="h1" center>
-          {score} of {MYTH_DECK.length}
+          {t('home.stepsProgress', { done: score, total: MYTH_DECK.length })}
         </AppText>
         <AppText variant="bodyLarge" center>
-          {score === MYTH_DECK.length ? 'You spotted every myth and fact!' : 'Nice work. Every card taught you something new.'}
+          {score === MYTH_DECK.length ? t('education.myths.perfect') : t('education.myths.niceWork')}
         </AppText>
-        <Button label="Play again" onPress={restart} />
+        <Button label={t('education.myths.playAgain')} onPress={restart} />
       </Animated.View>
     );
   }
@@ -76,12 +79,12 @@ export function MythStack() {
     <View key={round}>
       <View style={styles.scoreRow}>
         <AppText variant="bodyMedium">
-          Card {index + 1} of {MYTH_DECK.length}
+          {t('education.myths.cardOf', { n: index + 1, total: MYTH_DECK.length })}
         </AppText>
         <View style={styles.scorePill}>
           <Ionicons name="sparkles" size={14} color={Colors.primary} />
           <AppText variant="caption" color={Colors.primary}>
-            {score} correct
+            {t('education.myths.correctCount', { n: score })}
           </AppText>
         </View>
       </View>
@@ -97,19 +100,19 @@ export function MythStack() {
 
       {answered ? (
         <Animated.View entering={FadeInUp.springify().damping(16)}>
-          <Button label={index === MYTH_DECK.length - 1 ? 'See my score' : 'Next card'} onPress={next} />
+          <Button label={index === MYTH_DECK.length - 1 ? t('education.myths.seeScore') : t('education.myths.nextCard')} onPress={next} />
         </Animated.View>
       ) : (
         <View style={styles.buttons}>
           <Pressable onPress={() => answer('myth')} accessibilityRole="button" style={[styles.answerButton, { backgroundColor: Colors.tint100 }]}>
             <Ionicons name="arrow-back" size={18} color={Colors.primary} />
             <AppText variant="button" color={Colors.primary}>
-              Myth
+              {t('education.myths.myth')}
             </AppText>
           </Pressable>
           <Pressable onPress={() => answer('fact')} accessibilityRole="button" style={[styles.answerButton, { backgroundColor: Colors.successTint }]}>
             <AppText variant="button" color={Colors.success}>
-              Fact
+              {t('education.myths.fact')}
             </AppText>
             <Ionicons name="arrow-forward" size={18} color={Colors.success} />
           </Pressable>
@@ -119,9 +122,10 @@ export function MythStack() {
   );
 }
 
-type TopCardProps = { card: (typeof MYTH_DECK)[number]; guess: Guess | null; onSwipe: (g: Guess) => void };
+type TopCardProps = { card: MythCard; guess: Guess | null; onSwipe: (g: Guess) => void };
 
 function TopCard({ card, guess, onSwipe }: TopCardProps) {
+  const { t } = useTranslation();
   const [pan] = useState(() => new RNAnimated.ValueXY());
   const answeredRef = useRef(false);
   const onSwipeRef = useRef(onSwipe);
@@ -163,26 +167,26 @@ function TopCard({ card, guess, onSwipe }: TopCardProps) {
         frontColor={Colors.surface}
         backColor={correct ? Colors.successTint : Colors.tint50}
         accent={answered ? (correct ? Colors.success : Colors.primary) : Colors.tint200}
-        backLabel={correct ? 'You got it right!' : 'Now you know!'}
+        backLabel={correct ? t('education.myths.gotIt') : t('education.myths.nowYouKnow')}
         front={
           <>
             <View style={styles.hintRow}>
-              <AppText variant="caption">MYTH OR FACT?</AppText>
+              <AppText variant="caption">{t('education.myths.mythOrFact')}</AppText>
             </View>
             <AppText variant="h2" center style={styles.statement}>
               {card.statement}
             </AppText>
             <AppText variant="small" center>
-              Swipe left for Myth, right for Fact
+              {t('education.myths.swipeHint')}
             </AppText>
             <RNAnimated.View style={[styles.stamp, styles.stampMyth, { opacity: mythOpacity }]} pointerEvents="none">
               <AppText variant="h3" color={Colors.primary}>
-                MYTH
+                {t('education.myths.myth').toUpperCase()}
               </AppText>
             </RNAnimated.View>
             <RNAnimated.View style={[styles.stamp, styles.stampFact, { opacity: factOpacity }]} pointerEvents="none">
               <AppText variant="h3" color={Colors.success}>
-                FACT
+                {t('education.myths.fact').toUpperCase()}
               </AppText>
             </RNAnimated.View>
           </>
@@ -192,11 +196,11 @@ function TopCard({ card, guess, onSwipe }: TopCardProps) {
             <View style={styles.verdict}>
               <Ionicons name={correct ? 'checkmark-circle' : 'close-circle'} size={22} color={correct ? Colors.success : Colors.primary} />
               <AppText variant="h3" color={correct ? Colors.success : Colors.primary}>
-                {correct ? 'Correct!' : 'Not quite'} That is {card.isMyth ? 'a myth' : 'a fact'}.
+                {correct ? t('education.myths.correct') : t('education.myths.notQuite')} {card.isMyth ? t('education.myths.isMyth') : t('education.myths.isFact')}
               </AppText>
             </View>
             {card.isMyth ? null : (
-              <AppText variant="small">The myth it busts: {card.myth}</AppText>
+              <AppText variant="small">{t('education.myths.bustsMyth', { myth: card.myth })}</AppText>
             )}
             <AppText variant="body" style={styles.explanation}>
               {card.explanation}

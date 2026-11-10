@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Card } from '@/components/yumi/card';
@@ -20,16 +21,17 @@ type Props = {
 
 /** "Getting Started" checklist card on the first-time Home screen — progress bar + steps. */
 export function GettingStartedCard({ steps, delay = 0 }: Props) {
+  const { t } = useTranslation();
   const doneCount = steps.filter((s) => s.done).length;
   const progress = steps.length ? doneCount / steps.length : 0;
 
   return (
     <Card delay={delay} style={styles.card}>
       <View style={styles.header}>
-        <AppText variant="h3">Getting Started</AppText>
+        <AppText variant="h3">{t('home.gettingStarted')}</AppText>
         <View style={styles.badge}>
           <AppText variant="caption" color={Colors.primary}>
-            {doneCount} of {steps.length}
+            {t('home.stepsProgress', { done: doneCount, total: steps.length })}
           </AppText>
         </View>
       </View>

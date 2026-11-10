@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 
 import { auth } from '@/config/firebase';
+import i18n from '@/i18n';
 
 // Where the Express backend is reachable from this device. "localhost" only works for
 // web/iOS-simulator — a physical device via Expo Go needs the dev machine's LAN IP
@@ -74,12 +75,12 @@ export async function apiRequest<T = unknown>(
     // device (wrong LAN IP, backend not running, phone on a different network) rather
     // than anything wrong with the request itself.
     log(`[api] ✗ network error calling ${url} — is the backend running and reachable from this device?`, networkErr);
-    throw new Error(`Can't reach the server at ${API_URL}. Check the backend is running and EXPO_PUBLIC_API_URL is correct.`);
+    throw new Error(i18n.t('errors.network'));
   }
 
   const json = await res.json().catch((parseErr) => {
     log(`[api] ✗ ${method} ${url} returned non-JSON (status ${res.status})`, parseErr);
-    throw new Error(`Unexpected response from server (status ${res.status}).`);
+    throw new Error(i18n.t('errors.unexpectedResponse', { status: res.status }));
   });
 
   if (!res.ok || json.status === 'error') {
@@ -122,12 +123,12 @@ export async function apiUpload<T = unknown>(path: string, formData: FormData): 
     });
   } catch (networkErr) {
     console.error(`[api] ✗ network error uploading to ${url}`, networkErr);
-    throw new Error(`Can't reach the server at ${API_URL}. Check the backend is running and EXPO_PUBLIC_API_URL is correct.`);
+    throw new Error(i18n.t('errors.network'));
   }
 
   const json = await res.json().catch((parseErr) => {
     console.error(`[api] ✗ POST ${url} returned non-JSON (status ${res.status})`, parseErr);
-    throw new Error(`Unexpected response from server (status ${res.status}).`);
+    throw new Error(i18n.t('errors.unexpectedResponse', { status: res.status }));
   });
 
   if (!res.ok || json.status === 'error') {

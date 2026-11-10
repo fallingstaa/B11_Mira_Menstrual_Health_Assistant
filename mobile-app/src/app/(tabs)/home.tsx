@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/yumi/app-text';
@@ -16,17 +17,17 @@ import { MascotMini } from '@/components/yumi/mascot';
 import { QuickAction } from '@/components/yumi/quick-action';
 import { ScreenContainer } from '@/components/yumi/screen-container';
 import { SectionHeader } from '@/components/yumi/section-header';
-import { educationTopics } from '@/constants/education-hub';
+import { getEducationTopics } from '@/constants/education-hub';
 import { healthTips } from '@/constants/mock-data';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
+import i18n, { formatDays, phaseName } from '@/i18n';
 import { useAvatarAuthHeader } from '@/hooks/use-avatar-header';
 import { apiRequest } from '@/utils/api';
 import { daysBetween, greeting, parseIsoDate } from '@/utils/date';
 
 type HomeProfile = { name: string; avatarUrl: string | null };
 
-const featuredTopics = educationTopics.slice(1, 3);
 
 /**
  * Shape of `GET /api/menstrual/prediction` this screen actually reads — currentDay/phase are
@@ -46,14 +47,17 @@ type HomePrediction = {
 /** "In 5 days" / "Today" / "2 days late" — the ONLY thing shown for the prediction, per spec (no date range). */
 function relativePeriodText(nextPeriodStartDate: Date): string {
   const remaining = daysBetween(new Date(), nextPeriodStartDate);
-  if (remaining === 0) return 'Today';
-  if (remaining > 0) return `In ${remaining} day${remaining === 1 ? '' : 's'}`;
-  const daysLate = Math.abs(remaining);
-  return `${daysLate} day${daysLate === 1 ? '' : 's'} late`;
+  if (remaining === 0) return i18n.t('home.today');
+  if (remaining > 0) return i18n.t(remaining === 1 ? 'home.inDaysOne' : 'home.inDaysOther', { n: remaining });
+  const late = Math.abs(remaining);
+  return i18n.t(late === 1 ? 'home.daysLateOne' : 'home.daysLateOther', { n: late });
 }
 
 export default function HomeScreen() {
   const { firstPeriodRecorded, firstQuestionAsked, hydrated } = useAppState();
+  const { t } = useTranslation();
+  const educationTopics = getEducationTopics();
+  const featuredTopics = educationTopics.slice(1, 3);
   const [profile, setProfile] = useState<HomeProfile | null>(null);
   const [prediction, setPrediction] = useState<HomePrediction | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -96,19 +100,19 @@ export default function HomeScreen() {
   const nextPeriodStartDate = prediction?.nextPeriodStart ? parseIsoDate(prediction.nextPeriodStart) : null;
 
   const steps: GettingStartedStep[] = [
-    { key: 'account', label: 'Create your account', sublabel: 'Done!', done: true },
-    { key: 'onboarding', label: 'Complete onboarding', sublabel: 'Completed', done: true },
+    { key: 'account', label: t('home.steps.account'), sublabel: t('home.steps.done'), done: true },
+    { key: 'onboarding', label: t('home.steps.onboarding'), sublabel: t('home.steps.completed'), done: true },
     {
       key: 'period',
-      label: 'Record your first period',
-      sublabel: firstPeriodRecorded ? 'Completed' : 'Unlock cycle tracking',
+      label: t('home.steps.period'),
+      sublabel: firstPeriodRecorded ? t('home.steps.completed') : t('home.steps.periodHint'),
       done: firstPeriodRecorded,
       onPress: () => router.push('/period-setup'),
     },
     {
       key: 'question',
-      label: 'Ask Yumi your first question',
-      sublabel: firstQuestionAsked ? 'Completed' : 'Try the AI assistant',
+      label: t('home.steps.question'),
+      sublabel: firstQuestionAsked ? t('home.steps.completed') : t('home.steps.questionHint'),
       done: firstQuestionAsked,
       onPress: () => router.push('/(tabs)/assistant'),
     },
@@ -124,7 +128,7 @@ export default function HomeScreen() {
         <View style={styles.loadingWrap}>
           <MascotMini size={40} />
           <AppText variant="small" color={Colors.textMuted} style={{ marginTop: Spacing.sm }}>
-            Loading your cycle…
+            {t('home.loading')}
           </AppText>
         </View>
       </ScreenContainer>
@@ -149,10 +153,10 @@ export default function HomeScreen() {
                 </IconCircle>
               )}
               <View>
-                <AppText variant="h2">Hi, {profile?.name}</AppText>
+                <AppText variant="h2">{t('home.hi', { name: profile?.name ?? '' })}</AppText>
                 <AppText variant="small">
-                  {prediction?.currentDay ? `Day ${prediction.currentDay}` : 'Day —'}
-                  {prediction?.phase ? ` · ${prediction.phase}` : ''}
+                  {prediction?.currentDay ? t('home.day', { day: prediction.currentDay }) : t('home.dayUnknown')}
+                  {prediction?.phase ? ` · ${phaseName(prediction.phase)}` : ''}
                 </AppText>
               </View>
             </View>
@@ -168,8 +172,8 @@ export default function HomeScreen() {
               <View style={styles.heroTop}>
                 <CycleRing currentDay={prediction?.currentDay ?? 1} cycleLength={prediction?.averageCycleLength ?? 28} />
                 <View style={styles.heroStats}>
-                  <HeroStat label="Avg. cycle length" value={`${prediction?.averageCycleLength ?? 28} days`} />
-                  <HeroStat label="Avg. period length" value={`${prediction?.averagePeriodLength ?? 5} days`} />
+                  <HeroStat label={t('home.avgCycle')} value={formatDays(prediction?.averageCycleLength ?? 28)} />
+                  <HeroStat label={t('home.avgPeriod')} value={formatDays(prediction?.averagePeriodLength ?? 5)} />
                 </View>
               </View>
 
@@ -178,7 +182,7 @@ export default function HomeScreen() {
               <View style={styles.heroBottom}>
                 <View style={{ flex: 1 }}>
                   <AppText variant="small" color="rgba(255,255,255,0.85)">
-                    Next period estimated
+                    {t('home.nextPeriod')}
                   </AppText>
                   {/* From GET /api/menstrual/prediction's nextPeriodStart — relative days only, no date range. */}
                   <AppText variant="h3" color={Colors.textOnPrimary} style={{ marginTop: 2 }}>
@@ -187,7 +191,7 @@ export default function HomeScreen() {
                 </View>
                 <Pressable style={styles.heroCta} onPress={() => router.push('/prediction')}>
                   <AppText variant="bodyMedium" color={Colors.primary}>
-                    Details
+                    {t('home.details')}
                   </AppText>
                 </Pressable>
               </View>
@@ -217,17 +221,16 @@ export default function HomeScreen() {
               <Ionicons name="water" size={22} color={Colors.textOnPrimary} />
             </IconCircle>
             <AppText variant="h2" color={Colors.textOnPrimary} style={{ marginTop: Spacing.md }}>
-              Welcome to Yumi!
+              {t('home.welcomeTitle')}
             </AppText>
             <AppText variant="bodyMedium" color="rgba(255,255,255,0.85)" style={{ marginTop: 2 }}>
-              Your health journey starts here
+              {t('home.welcomeSubtitle')}
             </AppText>
             <AppText variant="body" color="rgba(255,255,255,0.85)" style={styles.welcomeParagraph}>
-              Record your first period to unlock cycle tracking, predictions, and personalized insights made just
-              for you.
+              {t('home.welcomeBody')}
             </AppText>
             <Button
-              label="Record My First Period"
+              label={t('home.recordFirstPeriod')}
               variant="secondary"
               icon={<Ionicons name="water" size={16} color={Colors.primary} />}
               onPress={() => router.push('/period-setup')}
@@ -240,10 +243,10 @@ export default function HomeScreen() {
       <CycleBasicsBanner />
 
       <View style={styles.section}>
-        <SectionHeader title="Quick actions" />
+        <SectionHeader title={t('home.quickActions')} />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickActionsRow}>
           <QuickAction
-            label="Record Period"
+            label={t('home.actions.record')}
             icon="water"
             color={Colors.primary}
             tint={Colors.tint50}
@@ -252,11 +255,11 @@ export default function HomeScreen() {
             // there's no separate flow to keep in sync anymore.
             onPress={() => router.push(firstPeriodRecorded ? '/(tabs)/calendar' : '/period-setup')}
           />
-          <QuickAction label="Calendar" icon="calendar" color={Colors.teal} tint={Colors.tealTint} onPress={() => router.push('/(tabs)/calendar')} />
-          <QuickAction label="Education" icon="book" color={Colors.lavender} tint={Colors.lavenderTint} onPress={() => router.push('/(tabs)/education')} />
-          <QuickAction label="AI Assistant" icon="chatbubble-ellipses" color={Colors.peach} tint={Colors.peachTint} onPress={() => router.push('/(tabs)/assistant')} />
-          <QuickAction label="Reminders" icon="alarm" color={Colors.info} tint={Colors.infoTint} onPress={() => router.push('/notifications')} />
-          <QuickAction label="Check-ins" icon="heart" color={Colors.success} tint={Colors.successTint} onPress={() => router.push('/checkin-history')} />
+          <QuickAction label={t('tabs.calendar')} icon="calendar" color={Colors.teal} tint={Colors.tealTint} onPress={() => router.push('/(tabs)/calendar')} />
+          <QuickAction label={t('home.actions.education')} icon="book" color={Colors.lavender} tint={Colors.lavenderTint} onPress={() => router.push('/(tabs)/education')} />
+          <QuickAction label={t('home.actions.assistant')} icon="chatbubble-ellipses" color={Colors.peach} tint={Colors.peachTint} onPress={() => router.push('/(tabs)/assistant')} />
+          <QuickAction label={t('home.actions.reminders')} icon="alarm" color={Colors.info} tint={Colors.infoTint} onPress={() => router.push('/notifications')} />
+          <QuickAction label={t('home.actions.checkins')} icon="heart" color={Colors.success} tint={Colors.successTint} onPress={() => router.push('/checkin-history')} />
         </ScrollView>
       </View>
 
@@ -268,7 +271,7 @@ export default function HomeScreen() {
 
       {!firstPeriodRecorded && (
         <View style={styles.section}>
-          <SectionHeader title="Health Tips" actionLabel="See all" onAction={() => router.push('/(tabs)/education')} />
+          <SectionHeader title={t('home.healthTips')} actionLabel={t('common.seeAll')} onAction={() => router.push('/(tabs)/education')} />
           <View style={styles.tipsRow}>
             {healthTips.map((tip, i) => (
               <HealthTipCard key={tip.id} tip={tip} delay={i * 60} />
@@ -282,21 +285,21 @@ export default function HomeScreen() {
           <Card style={styles.checkinCard} delay={80}>
             <MascotMini size={40} />
             <View style={{ flex: 1 }}>
-              <AppText variant="h3">How are you feeling today?</AppText>
+              <AppText variant="h3">{t('home.checkinPromptTitle')}</AppText>
               <AppText variant="small" style={{ marginTop: 2 }}>
-                You haven&apos;t checked in yet — it only takes a few seconds.
+                {t('home.checkinPromptBody')}
               </AppText>
             </View>
           </Card>
           <Button
-            label="Check in now"
+            label={t('home.checkinNow')}
             variant="secondary"
             onPress={() => router.push('/checkin')}
             style={styles.checkinButton}
           />
 
           <View style={styles.section}>
-            <SectionHeader title="Learn something new" actionLabel="See all" onAction={() => router.push('/(tabs)/education')} />
+            <SectionHeader title={t('home.learnSomething')} actionLabel={t('common.seeAll')} onAction={() => router.push('/(tabs)/education')} />
             {/* Topics 2 & 3 (Understanding Your Cycle, Period Hygiene) — more relevant here than
                 Topic 1 (Your First Period), since this section only shows once that's already logged. */}
             {featuredTopics.map((topic, i) => (
@@ -322,6 +325,7 @@ export default function HomeScreen() {
  * and a returning one can reopen it any time. Opens as a modal, so Home stays right where it is.
  */
 function CycleBasicsBanner() {
+  const { t } = useTranslation();
   return (
     <Pressable onPress={() => router.push({ pathname: '/cycle-basics', params: { mode: 'review' } })}>
       <Card style={styles.basicsBanner} delay={20}>
@@ -330,15 +334,15 @@ function CycleBasicsBanner() {
             <Ionicons name="school" size={20} color={Colors.warning} />
           </IconCircle>
           <View style={{ flex: 1 }}>
-            <AppText variant="h3">Cycle Basics 101</AppText>
+            <AppText variant="h3">{t('home.basicsTitle')}</AppText>
             <AppText variant="small" color={Colors.textSecondary} style={{ marginTop: 2 }}>
-              Periods vs. cycles, explained in under 2 minutes
+              {t('home.basicsSubtitle')}
             </AppText>
           </View>
         </View>
         <View style={styles.basicsPill}>
           <AppText variant="small" color={Colors.textOnPrimary}>
-            Tap to learn
+            {t('home.tapToLearn')}
           </AppText>
           <Ionicons name="arrow-forward" size={12} color={Colors.textOnPrimary} />
         </View>

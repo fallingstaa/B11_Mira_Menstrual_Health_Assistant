@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Chip } from '@/components/yumi/chip';
@@ -33,18 +34,19 @@ type Props = {
  * to the next.
  */
 export function CollapsibleChipField({ label, options, selectedKeys, onToggle, style }: Props) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(selectedKeys.length > 0);
 
   return (
     <View style={style}>
       <Pressable onPress={() => setExpanded((e) => !e)} style={styles.header}>
         <AppText variant="caption" numberOfLines={1} style={styles.label}>
-          {label.toUpperCase()} · OPTIONAL
+          {label.toUpperCase()} · {t('chipField.optional')}
         </AppText>
         <View style={styles.trigger}>
           {selectedKeys.length > 0 && (
             <AppText variant="small" numberOfLines={1} color={Colors.primary}>
-              {selectedKeys.length} selected
+              {t('chipField.selected', { n: selectedKeys.length })}
             </AppText>
           )}
           <Ionicons name={expanded ? 'chevron-up-circle' : 'add-circle'} size={20} color={Colors.primary} />

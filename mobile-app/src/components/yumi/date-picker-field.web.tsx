@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
@@ -24,7 +25,9 @@ function toInputValue(date: Date): string {
  * browser's own <input type="date"> — its calendar popover is native to the browser, needs no
  * custom UI or animation from us, and every user already knows how to use it.
  */
-export function DatePickerField({ label, date, onChange, placeholder = 'Select a date', maximumDate }: Props) {
+export function DatePickerField({ label, date, onChange, placeholder: placeholderProp, maximumDate }: Props) {
+  const { t } = useTranslation();
+  const placeholder = placeholderProp ?? t('datePicker.placeholder');
   return (
     <View style={styles.wrap}>
       <AppText variant="bodyMedium" style={styles.label}>

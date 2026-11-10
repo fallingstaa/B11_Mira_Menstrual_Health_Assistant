@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -19,7 +20,9 @@ type Props = {
  * Tap to open the OS's own date picker — a native popover on iOS, the system dialog on Android.
  * No custom calendar UI to maintain, and it's what every user already knows how to use.
  */
-export function DatePickerField({ label, date, onChange, placeholder = 'Select a date', maximumDate }: Props) {
+export function DatePickerField({ label, date, onChange, placeholder: placeholderProp, maximumDate }: Props) {
+  const { t } = useTranslation();
+  const placeholder = placeholderProp ?? t('datePicker.placeholder');
   const [show, setShow] = useState(false);
 
   const handleChange = (event: DateTimePickerEvent, selected?: Date) => {

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Card } from '@/components/yumi/card';
@@ -59,28 +60,26 @@ function groupByMonth(entries: PeriodDayEntry[]): MonthGroup[] {
  * past month.)
  */
 export function PeriodEntriesSummary({ entries, activeDate, today, onSelect, onRemove, lockPastMonths = true, delay = 0 }: Props) {
+  const { t } = useTranslation();
   const groups = useMemo(() => groupByMonth(Object.values(entries)), [entries]);
 
   if (groups.length === 0) return null;
 
   const confirmRemove = (date: Date) => {
-    Alert.alert(`Delete ${formatLong(date)}?`, "This removes it from your recorded days. This can't be undone.", [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => onRemove(date) },
+    Alert.alert(t('entries.deleteTitle', { date: formatLong(date) }), t('entries.deleteBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => onRemove(date) },
     ]);
   };
 
   const explainLocked = () => {
-    Alert.alert(
-      'Record locked',
-      "This day is from a previous month, so it's locked and can't be edited or deleted anymore — that history already feeds your cycle predictions. Only the current month stays open for changes.",
-    );
+    Alert.alert(t('calendar.lockedTitle'), t('entries.lockedBody'));
   };
 
   return (
     <Card style={styles.card} delay={delay}>
       <AppText variant="h3" style={styles.title}>
-        Recorded Days
+        {t('entries.title')}
       </AppText>
       {groups.map((group) => {
         // Two different questions: is this section actually the calendar's current month
@@ -92,13 +91,15 @@ export function PeriodEntriesSummary({ entries, activeDate, today, onSelect, onR
           <View key={monthKey(group.monthDate)} style={styles.monthGroup}>
             <View style={styles.monthHeaderRow}>
               <AppText variant="caption" numberOfLines={1} style={styles.monthHeaderLabel}>
-                {isActualCurrentMonth ? `THIS MONTH · ${monthLabel(group.monthDate).toUpperCase()}` : monthLabel(group.monthDate).toUpperCase()}
+                {isActualCurrentMonth
+                  ? t('entries.thisMonth', { month: monthLabel(group.monthDate).toUpperCase() })
+                  : monthLabel(group.monthDate).toUpperCase()}
               </AppText>
               {!isEditable && (
                 <View style={styles.lockBadge}>
                   <Ionicons name="lock-closed" size={10} color={Colors.textMuted} />
                   <AppText variant="caption" numberOfLines={1} color={Colors.textMuted}>
-                    Locked
+                    {t('entries.locked')}
                   </AppText>
                 </View>
               )}
@@ -119,7 +120,7 @@ export function PeriodEntriesSummary({ entries, activeDate, today, onSelect, onR
                     <View style={styles.endTag}>
                       <Ionicons name="flag" size={10} color={Colors.primaryDark} />
                       <AppText variant="caption" color={Colors.primaryDark}>
-                        End
+                        {t('entries.end')}
                       </AppText>
                     </View>
                   )}

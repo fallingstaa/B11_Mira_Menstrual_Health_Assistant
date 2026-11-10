@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
 
@@ -17,6 +18,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPasswordScreen() {
   const { resetPassword } = useAuth();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
@@ -25,7 +27,7 @@ export default function ForgotPasswordScreen() {
 
   const handleSend = async () => {
     if (!EMAIL_PATTERN.test(email.trim())) {
-      setError('Enter a valid email address');
+      setError(t('auth.forgot.invalidEmail'));
       return;
     }
     setError('');
@@ -63,10 +65,10 @@ export default function ForgotPasswordScreen() {
 
           <Animated.View entering={FadeInUp.duration(400).delay(100)} style={styles.sentTextWrap}>
             <AppText variant="h1" center style={styles.sentTitle}>
-              Check your email
+              {t('auth.forgot.checkEmail')}
             </AppText>
             <AppText variant="body" color={Colors.textSecondary} center style={styles.sentSubtitle}>
-              We&apos;ve sent password reset instructions to
+              {t('auth.forgot.sentTo')}
             </AppText>
             <AppText variant="bodyMedium" center>
               {email}
@@ -75,18 +77,18 @@ export default function ForgotPasswordScreen() {
 
           <Animated.View entering={FadeInUp.duration(400).delay(180)} style={styles.sentActions}>
             <Button
-              label="Back to Log In"
+              label={t('auth.forgot.backToLogin')}
               onPress={() => router.replace('/login')}
               style={styles.backToLoginButton}
             />
 
             <View style={styles.resendRow}>
               <AppText variant="small" color={Colors.textSecondary}>
-                {resent ? 'Email resent — ' : "Didn't get the email? "}
+                {resent ? t('auth.emailResent') : t('auth.didntGetEmail')}
               </AppText>
               <Pressable hitSlop={6} onPress={handleResend} disabled={resent}>
                 <AppText variant="small" color={resent ? Colors.textMuted : Colors.primary}>
-                  {resent ? 'Sent!' : 'Resend'}
+                  {resent ? t('auth.sent') : t('auth.resend')}
                 </AppText>
               </Pressable>
             </View>
@@ -105,16 +107,16 @@ export default function ForgotPasswordScreen() {
           <Ionicons name="lock-closed-outline" size={30} color={Colors.primary} />
         </IconCircle>
         <AppText variant="h1" style={styles.headerTitle}>
-          Forgot your password?
+          {t('auth.forgot.title')}
         </AppText>
         <AppText variant="body" color={Colors.textSecondary} center style={styles.headerSubtitle}>
-          No worries — enter the email linked to your account and we&apos;ll send you a reset link.
+          {t('auth.forgot.subtitle')}
         </AppText>
       </Animated.View>
 
       <Animated.View entering={FadeInUp.duration(450).delay(120)}>
         <TextField
-          label="Email"
+          label={t('auth.email')}
           icon="mail-outline"
           placeholder="you@example.com"
           keyboardType="email-address"
@@ -127,16 +129,16 @@ export default function ForgotPasswordScreen() {
           error={error}
         />
 
-        <Button label="Send Reset Link" onPress={handleSend} loading={loading} style={styles.sendButton} />
+        <Button label={t('auth.forgot.submit')} onPress={handleSend} loading={loading} style={styles.sendButton} />
       </Animated.View>
 
       <View style={styles.footer}>
         <AppText variant="body" color={Colors.textSecondary}>
-          Remembered your password?{' '}
+          {t('auth.forgot.remembered')}{' '}
         </AppText>
         <Pressable hitSlop={6} onPress={() => router.replace('/login')}>
           <AppText variant="bodyMedium" color={Colors.primary}>
-            Log in
+            {t('auth.logIn')}
           </AppText>
         </Pressable>
       </View>

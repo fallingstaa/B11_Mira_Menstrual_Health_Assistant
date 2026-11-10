@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -15,22 +16,27 @@ import Svg, { Path } from 'react-native-svg';
 
 import { AppText } from '@/components/yumi/app-text';
 import { HeartBurst, useYumi } from '@/components/yumi/education/yumi-companion';
-import { educationTopics } from '@/constants/education-hub';
+import { getEducationTopics } from '@/constants/education-hub';
 import { Colors, Radius, Shadow, Spacing } from '@/constants/theme';
 
 // The four phases come straight from Topic 2's "The Four Phases" section, so the wheel and the
 // written text can never drift apart.
-const cycleTopic = educationTopics.find((t) => t.id === 'understanding-your-cycle');
-const phaseSection = cycleTopic?.sections.find((s) => s.kind === 'phases');
-const INTRO = phaseSection?.kind === 'phases' ? phaseSection.intro : '';
-const PHASES = phaseSection?.kind === 'phases' ? phaseSection.slides : [];
+// Read at render time (not module load) so the wheel follows the app's language.
+function usePhaseSection() {
+  const cycleTopic = getEducationTopics().find((t) => t.id === 'understanding-your-cycle');
+  const phaseSection = cycleTopic?.sections.find((s) => s.kind === 'phases');
+  return {
+    INTRO: phaseSection?.kind === 'phases' ? phaseSection.intro : '',
+    PHASES: phaseSection?.kind === 'phases' ? phaseSection.slides : [],
+  };
+}
 
 // What the lining does in each phase, in the same order as PHASES — drawn in the wheel's centre.
 const LINING = [
-  { label: 'Lining sheds', height: 0.22 },
-  { label: 'Lining thickens', height: 0.55 },
-  { label: 'Egg is released', height: 0.62 },
-  { label: 'Lining is held', height: 0.95 },
+  { label: 'education.cycleWheel.lining.sheds' as const, height: 0.22 },
+  { label: 'education.cycleWheel.lining.thickens' as const, height: 0.55 },
+  { label: 'education.cycleWheel.lining.released' as const, height: 0.62 },
+  { label: 'education.cycleWheel.lining.held' as const, height: 0.95 },
 ] as const;
 
 const SIZE_MAX = 300;
@@ -54,6 +60,8 @@ function segmentPath(cx: number, cy: number, outer: number, inner: number, from:
 /** Topic 2: a four-phase wheel that spins the tapped phase to the top and shows what the lining does. */
 export function CycleWheel() {
   const say = useYumi();
+  const { t } = useTranslation();
+  const { INTRO, PHASES } = usePhaseSection();
   const [index, setIndex] = useState(0);
   const [turn, setTurn] = useState(0);
   const [visited, setVisited] = useState<Set<number>>(new Set([0]));
@@ -83,9 +91,9 @@ export function CycleWheel() {
     setVisited(nextVisited);
     if (nextVisited.size === PHASES.length && visited.size < PHASES.length) {
       setBurst((n) => n + 1);
-      say('You explored all four phases! Nicely done.', 'cheer');
+      say(t('education.cycleWheel.sayAll'), 'cheer');
     } else {
-      say(`${PHASES[i].title}. Tap another phase to keep spinning.`);
+      say(t('education.cycleWheel.sayPhase', { phase: PHASES[i].title }));
     }
   };
 
@@ -94,7 +102,7 @@ export function CycleWheel() {
 
   return (
     <View style={styles.card}>
-      <AppText variant="h3">The cycle wheel</AppText>
+      <AppText variant="h3">{t('education.cycleWheel.title')}</AppText>
       <AppText variant="small" style={styles.hint}>
         {INTRO}
       </AppText>
@@ -143,7 +151,7 @@ export function CycleWheel() {
           <View key={p.title} style={[styles.dot, { backgroundColor: visited.has(i) ? p.color : Colors.border }]} />
         ))}
         <AppText variant="caption" style={styles.dotsLabel}>
-          {visited.size} of {PHASES.length} phases explored
+          {t('education.cycleWheel.explored', { n: visited.size, total: PHASES.length })}
         </AppText>
       </View>
 
@@ -164,6 +172,7 @@ export function CycleWheel() {
 
 /** The lining drawn as a soft bar whose height follows the phase; drops fall while it is shedding. */
 function LiningGraphic({ index, color, tint }: { index: number; color: string; tint: string }) {
+  const { t } = useTranslation();
   const level = useSharedValue(LINING[index].height);
   useEffect(() => {
     level.value = withSpring(LINING[index].height, { damping: 12, stiffness: 90 });
@@ -182,7 +191,7 @@ function LiningGraphic({ index, color, tint }: { index: number; color: string; t
       </View>
       <Animated.View key={index} entering={FadeInDown.duration(250)}>
         <AppText variant="caption" color={color} center>
-          {LINING[index].label.toUpperCase()}
+          {t(LINING[index].label).toUpperCase()}
         </AppText>
       </Animated.View>
     </View>

@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,9 +11,11 @@ import { ChatBubble } from '@/components/yumi/chat-bubble';
 import { Chip } from '@/components/yumi/chip';
 import { Mascot, MascotMini } from '@/components/yumi/mascot';
 import { TypingDots } from '@/components/yumi/typing-dots';
-import { ChatMessage, chatSuggestions } from '@/constants/mock-data';
+import { ChatMessage } from '@/constants/mock-data';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
+import { useLocalizedTextStyle } from '@/i18n/fonts';
+import { formatTime } from '@/utils/date';
 import { apiRequest } from '@/utils/api';
 
 // Shape of the real POST /api/ai/ask response — see backend/src/controllers/aiController.js.
@@ -24,18 +27,27 @@ type AskResponse = {
   createdAt: string;
 };
 
-const formatTime = () => new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const now = () => formatTime(new Date());
+
+const CHAT_SUGGESTION_KEYS = [
+  'assistant.suggestions.flow',
+  'assistant.suggestions.cramps',
+  'assistant.suggestions.tampon',
+  'assistant.suggestions.moody',
+] as const;
 
 /** The only pre-filled message: Yumi saying hello. Nothing here pretends the user already asked anything. */
 const welcomeMessage = (): ChatMessage => ({
   id: 'welcome',
   from: 'yumi',
-  text: "Hi! I'm Yumi. I'm here to answer any period or body questions — no question is too weird!",
-  time: formatTime(),
+  text: '',
+  time: now(),
 });
 
 export default function AssistantScreen() {
   const { markFirstQuestionAsked } = useAppState();
+  const { t } = useTranslation();
+  const inputStyle = useLocalizedTextStyle(styles.input);
   const [messages, setMessages] = useState<ChatMessage[]>(() => [welcomeMessage()]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
@@ -61,7 +73,7 @@ export default function AssistantScreen() {
     const trimmed = text.trim();
     if (!trimmed || typing) return;
 
-    const userMessage: ChatMessage = { id: `m${nextId.current++}`, from: 'user', text: trimmed, time: formatTime() };
+    const userMessage: ChatMessage = { id: `m${nextId.current++}`, from: 'user', text: trimmed, time: now() };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     markFirstQuestionAsked();
@@ -81,7 +93,7 @@ export default function AssistantScreen() {
         id: `m${nextId.current++}`,
         from: 'yumi',
         text: data.aiResponse,
-        time: formatTime(),
+        time: now(),
         sources: data.sources,
       };
       setMessages((prev) => [...prev, reply]);
@@ -93,9 +105,9 @@ export default function AssistantScreen() {
         from: 'yumi',
         text:
           err instanceof Error
-            ? `Sorry, I couldn't get an answer just now — ${err.message}`
-            : "Sorry, I couldn't get an answer just now. Please try again in a moment.",
-        time: formatTime(),
+            ? t('assistant.errorWithReason', { reason: err.message })
+            : t('assistant.error'),
+        time: now(),
       };
       setMessages((prev) => [...prev, reply]);
     } finally {
@@ -110,10 +122,10 @@ export default function AssistantScreen() {
       <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
         <MascotMini size={36} />
         <View>
-          <AppText variant="h3">Yumi AI</AppText>
+          <AppText variant="h3">{t('tabs.assistant')}</AppText>
           <View style={styles.statusRow}>
             <View style={styles.onlineDot} />
-            <AppText variant="small">Always here for you</AppText>
+            <AppText variant="small">{t('assistant.status')}</AppText>
           </View>
         </View>
       </View>
@@ -123,7 +135,9 @@ export default function AssistantScreen() {
         data={data}
         inverted
         keyExtractor={(m) => m.id}
-        renderItem={({ item }) => <ChatBubble message={item} />}
+        renderItem={({ item }) => (
+          <ChatBubble message={item.id === 'welcome' ? { ...item, text: t('assistant.welcome') } : item} />
+        )}
         contentContainerStyle={styles.messagesContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -147,7 +161,7 @@ export default function AssistantScreen() {
             <View style={styles.hero}>
               <Mascot size={96} waving={false} />
               <AppText variant="small" center style={styles.heroText}>
-                Ask me anything about periods, cycles or how your body feels.
+                {t('assistant.hero')}
               </AppText>
             </View>
           )
@@ -161,8 +175,8 @@ export default function AssistantScreen() {
           keyboardShouldPersistTaps="handled"
           style={styles.suggestionsScroll}
           contentContainerStyle={styles.suggestionsRow}>
-          {chatSuggestions.map((s) => (
-            <Chip key={s} label={s} onPress={() => send(s)} style={styles.suggestionChip} />
+          {CHAT_SUGGESTION_KEYS.map((key) => (
+            <Chip key={key} label={t(key)} onPress={() => send(t(key))} style={styles.suggestionChip} />
           ))}
         </ScrollView>
       )}
@@ -171,9 +185,9 @@ export default function AssistantScreen() {
         <TextInput
           value={input}
           onChangeText={setInput}
-          placeholder="Ask Yumi anything..."
+          placeholder={t('assistant.placeholder')}
           placeholderTextColor={Colors.textMuted}
-          style={styles.input}
+          style={inputStyle}
           multiline
         />
         <Pressable
@@ -181,7 +195,7 @@ export default function AssistantScreen() {
           onPress={() => send(input)}
           disabled={!canSend}
           accessibilityRole="button"
-          accessibilityLabel="Send">
+          accessibilityLabel={t('assistant.send')}>
           <Ionicons name="send" size={17} color={Colors.textOnPrimary} />
         </Pressable>
       </Animated.View>

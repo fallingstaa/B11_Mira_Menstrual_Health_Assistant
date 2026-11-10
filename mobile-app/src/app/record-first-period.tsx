@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { AppText } from '@/components/yumi/app-text';
@@ -16,7 +17,7 @@ import { ScreenHeader } from '@/components/yumi/screen-header';
 import { SuccessOverlay } from '@/components/yumi/success-overlay';
 import { Colors, Radius, Shadow, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
-import { dateKey, formatShort, getMonthGrid, isSameDay, monthLabel, WEEKDAY_LABELS } from '@/utils/date';
+import { dateKey, formatShort, getMonthGrid, isSameDay, monthLabel, weekdayLabels } from '@/utils/date';
 
 /**
  * Guided, calendar-tap flow for logging a first period — simpler than the detailed /record form.
@@ -35,13 +36,14 @@ export default function RecordFirstPeriodScreen() {
     setAveragePeriodDuration,
     commitDays,
   } = useAppState();
+  const { t } = useTranslation();
   // The real device date, not the app's fixed demo date — so this screen reflects "today" whenever it's actually opened.
   const [today] = useState(() => new Date());
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [activeDay, setActiveDay] = useState(today);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('Period recorded!');
+  const [successMessage, setSuccessMessage] = useState(() => t('recordFirst.recorded'));
   const [knowsCycleLength, setKnowsCycleLength] = useState<CycleLengthAnswer>(null);
   const [cycleLength, setCycleLength] = useState(DEFAULT_CYCLE_LENGTH);
   const [knowsPeriodLength, setKnowsPeriodLength] = useState<PeriodLengthAnswer>(null);
@@ -88,8 +90,8 @@ export default function RecordFirstPeriodScreen() {
   useEffect(() => {
     if (!saved) return;
     // Go straight to Home, skipping back over the "Let's get you set up" question screen.
-    const t = setTimeout(() => router.dismissTo('/(tabs)/home'), 1100);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => router.dismissTo('/(tabs)/home'), 1100);
+    return () => clearTimeout(timer);
   }, [saved]);
 
   /** Jump the editor to an already-recorded day, even if it's in a different month than shown. */
@@ -113,7 +115,7 @@ export default function RecordFirstPeriodScreen() {
       try {
         await commitDays(Object.values(periodEntries), 'record_first_period');
       } catch (err) {
-        Alert.alert("Couldn't save", err instanceof Error ? err.message : 'Please try again.');
+        Alert.alert(t('common.couldntSave'), err instanceof Error ? err.message : t('common.tryAgain'));
         return;
       } finally {
         setSaving(false);
@@ -157,8 +159,8 @@ export default function RecordFirstPeriodScreen() {
 
   const headerSubtitle =
     markedCount === 0
-      ? 'Tap the days you have your period'
-      : `${markedCount} day${markedCount === 1 ? '' : 's'} marked · ${formatShort(latestEntry.date)}`;
+      ? t('recordFirst.tapDays')
+      : `${t(markedCount === 1 ? 'recordFirst.markedOne' : 'recordFirst.markedOther', { n: markedCount })} · ${formatShort(latestEntry.date)}`;
 
   return (
     <ScreenContainer
@@ -170,17 +172,17 @@ export default function RecordFirstPeriodScreen() {
               <View style={styles.statusBarLeft}>
                 <View style={styles.statusDot} />
                 <AppText variant="small" color={Colors.primary}>
-                  {markedCount} day{markedCount === 1 ? '' : 's'} marked · tracking
+                  {t(markedCount === 1 ? 'recordFirst.markedOne' : 'recordFirst.markedOther', { n: markedCount })} · {t('recordFirst.tracking')}
                 </AppText>
               </View>
               <AppText variant="small" color={Colors.primary}>
-                {endEntry ? `Ends ${formatShort(endEntry.date)}` : formatShort(latestEntry.date)}
+                {endEntry ? t('recordFirst.ends', { date: formatShort(endEntry.date) }) : formatShort(latestEntry.date)}
               </AppText>
             </View>
           )}
           <View style={styles.footerRow}>
             <Button
-              label="Mark as End"
+              label={t('recordFirst.markAsEnd')}
               variant="outline"
               icon={<Ionicons name="flag" size={16} color={Colors.primary} />}
               disabled={markedCount === 0}
@@ -188,24 +190,24 @@ export default function RecordFirstPeriodScreen() {
               style={styles.footerButton}
             />
             <Button
-              label="Done"
+              label={t('common.done')}
               icon={<Ionicons name="checkmark" size={16} color={Colors.textOnPrimary} />}
               // Deliberately never disabled by markedCount — finishing with nothing marked yet is
               // a valid outcome (same as "Skip for now" elsewhere in setup), not something to
               // block. A disabled Save button here — greyed out and unresponsive until a day was
               // tapped first — is what made this feel "hard to click". `loading` (not `disabled`)
               // guards against a double-tap firing two saves while the first is still in flight.
-              onPress={() => finish(markedCount === 0 ? 'All good — come back any time.' : 'Saved! Keep logging as it continues.')}
+              onPress={() => finish(markedCount === 0 ? t('recordFirst.allGood') : t('recordFirst.savedKeepLogging'))}
               loading={saving}
               style={styles.footerButton}
             />
           </View>
           <AppText variant="caption" center style={styles.footerCaption}>
-            Tap a day to mark it · Know when it ended? Mark as End · Done finishes up
+            {t('recordFirst.footerHint')}
           </AppText>
         </View>
       }>
-      <ScreenHeader title="Record Your Period" subtitle={headerSubtitle} />
+      <ScreenHeader title={t('recordFirst.title')} subtitle={headerSubtitle} />
 
       <Card style={styles.calendarCard}>
         <View style={styles.monthRow}>
@@ -219,7 +221,7 @@ export default function RecordFirstPeriodScreen() {
         </View>
 
         <View style={styles.weekdayRow}>
-          {WEEKDAY_LABELS.map((w, i) => (
+          {weekdayLabels().map((w, i) => (
             <AppText key={i} variant="caption" style={styles.weekdayLabel}>
               {w}
             </AppText>
@@ -259,10 +261,10 @@ export default function RecordFirstPeriodScreen() {
         </Animated.View>
 
         <View style={styles.legendRow}>
-          <LegendItem style={styles.legendMarked} label="Period day" />
-          <LegendItem style={styles.legendEnd} label="End day" />
-          <LegendItem style={styles.legendToday} label="Today" />
-          <LegendItem style={styles.legendActive} label="Selected" />
+          <LegendItem style={styles.legendMarked} label={t('recordFirst.legendPeriodDay')} />
+          <LegendItem style={styles.legendEnd} label={t('recordFirst.legendEndDay')} />
+          <LegendItem style={styles.legendToday} label={t('home.today')} />
+          <LegendItem style={styles.legendActive} label={t('recordFirst.legendSelected')} />
         </View>
       </Card>
 
@@ -302,10 +304,10 @@ export default function RecordFirstPeriodScreen() {
           <View style={[styles.popupSheet, Shadow.raised]}>
             <View style={styles.popupHandle} />
             <View style={styles.popupHeaderRow}>
-              <AppText variant="h2">Cycle & Period Length</AppText>
+              <AppText variant="h2">{t('recordFirst.lengthsTitle')}</AppText>
               <Pressable onPress={() => closeCycleLengthPopup(false)} hitSlop={8}>
                 <AppText variant="bodyMedium" color={Colors.textMuted}>
-                  Skip
+                  {t('common.skip')}
                 </AppText>
               </Pressable>
             </View>
@@ -327,7 +329,7 @@ export default function RecordFirstPeriodScreen() {
                 onPeriodLengthChange={setPeriodLength}
               />
 
-              <Button label="Save & Continue" onPress={() => closeCycleLengthPopup(true)} style={styles.popupButton} />
+              <Button label={t('lastPeriod.saveContinue')} onPress={() => closeCycleLengthPopup(true)} style={styles.popupButton} />
             </ScrollView>
           </View>
         </View>

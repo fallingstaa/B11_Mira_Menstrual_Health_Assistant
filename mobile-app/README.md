@@ -7,8 +7,10 @@ Expo/React Native app for Yumi - Teen Menstrual Health Assistant, targeting firs
 ### 1. Install dependencies
 
 ```bash
-npm install
+npm install --legacy-peer-deps
 ```
+
+`--legacy-peer-deps` skips an optional `react-native-windows` peer dependency of the date picker that would otherwise stop the install; the app doesn't use it.
 
 ### 2. Configure environment variables
 
@@ -39,7 +41,17 @@ npx expo start
 
 Scan the QR code with **Expo Go**, or press `a`/`i` for an Android/iOS emulator.
 
-**Expo Go version note:** this project is pinned to **Expo SDK 54** deliberately — not the latest. SDK 55+ isn't published to the public App Store's Expo Go build yet, so a newer SDK means iOS testing requires either a signed `sign.expo.dev` build (re-signs every 7 days on a free Apple ID) or a custom EAS dev-client build. SDK 54 works with the plain App Store/Play Store Expo Go app with no extra setup. Don't bump `expo` in `package.json` without checking this is still true.
+**Expo Go version note:** this project is on **Expo SDK 58**, matching the current App Store / Play Store Expo Go. Expo Go only runs one SDK version, so when the store version moves to a newer SDK, upgrade the project to match (`npx expo install expo@^<sdk> --fix -- --legacy-peer-deps`, then `npx expo-doctor`).
+
+## Languages (English / Khmer)
+
+All UI text goes through [i18next](https://www.i18next.com/) — never hard-code user-facing English in a screen.
+
+- **UI text:** `src/i18n/locales/en.ts` (source of truth) and `src/i18n/locales/km.ts`. In a component: `const { t } = useTranslation();` then `t('home.welcomeTitle')`. Both the keys and the Khmer file's shape are type-checked, so a typo'd key or a missing Khmer string fails `npx tsc --noEmit`.
+- **Education content:** English stays in `src/constants/education-hub.ts` / `education-activities.ts`; the Khmer text lives in the matching `*.km.ts` files (text only, matched by id/position). Read it through `getEducationTopics()` / `getActivities()` so it follows the language.
+- **Language choice:** saved on the device (`src/i18n/index.ts`), switchable before login (EN | ខ្មែរ toggle on onboarding/login/register) or from Profile → Language, which also saves it to the account.
+- **Khmer font:** Poppins has no Khmer glyphs, so `AppText` and text inputs switch to the Koh Santepheap font with taller line height (`src/i18n/fonts.ts`).
+- The Khmer text is a first draft — health wording should be reviewed by a native speaker before release.
 
 ## Current Status
 

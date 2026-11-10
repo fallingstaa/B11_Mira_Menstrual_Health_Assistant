@@ -3,6 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Card } from '@/components/yumi/card';
@@ -12,6 +13,7 @@ import { ScreenContainer } from '@/components/yumi/screen-container';
 import { ScreenHeader } from '@/components/yumi/screen-header';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { getPeriodStreaks, useAppState } from '@/context/app-state';
+import i18n, { formatDays } from '@/i18n';
 import { apiRequest } from '@/utils/api';
 import { daysBetween, formatRange, formatShort, parseIsoDate } from '@/utils/date';
 
@@ -75,52 +77,51 @@ function buildPhases(averageCycleLength: number, averagePeriodLength: number): P
   const phases: PhaseInfo[] = [
     {
       key: 'menstrual',
-      label: 'Menstrual',
-      sublabel: 'Period',
+      label: i18n.t('prediction.phases.menstrual.label'),
+      sublabel: i18n.t('prediction.phases.menstrual.sublabel'),
       start: 1,
       end: menstrualEnd,
       color: Colors.primary,
       tint: Colors.tint50,
       icon: 'water',
-      momentum: 'Take it easy',
-      description: 'Your body is shedding the uterine lining. Cramps and fatigue are common — rest and stay hydrated.',
+      momentum: i18n.t('prediction.phases.menstrual.momentum'),
+      description: i18n.t('prediction.phases.menstrual.description'),
     },
     {
       key: 'follicular',
-      label: 'Follicular',
-      sublabel: 'Pre-ovulation',
+      label: i18n.t('prediction.phases.follicular.label'),
+      sublabel: i18n.t('prediction.phases.follicular.sublabel'),
       start: follicularStart,
       end: follicularEnd,
       color: Colors.warning,
       tint: Colors.warningTint,
       icon: 'star',
-      momentum: 'Energy is increasing',
-      description:
-        'Your estrogen is rising, and you may feel more energetic and social. A great time for exercise and creativity!',
+      momentum: i18n.t('prediction.phases.follicular.momentum'),
+      description: i18n.t('prediction.phases.follicular.description'),
     },
     {
       key: 'ovulation',
-      label: 'Ovulation',
-      sublabel: 'Peak fertility',
+      label: i18n.t('prediction.phases.ovulation.label'),
+      sublabel: i18n.t('prediction.phases.ovulation.sublabel'),
       start: ovulationStart,
       end: ovulationEnd,
       color: Colors.success,
       tint: Colors.successTint,
       icon: 'sunny',
-      momentum: 'Energy peaking',
-      description: "You're at your most fertile. Some people notice a boost in confidence, energy, and libido around this time.",
+      momentum: i18n.t('prediction.phases.ovulation.momentum'),
+      description: i18n.t('prediction.phases.ovulation.description'),
     },
     {
       key: 'luteal',
-      label: 'Luteal',
-      sublabel: 'Post-ovulation',
+      label: i18n.t('prediction.phases.luteal.label'),
+      sublabel: i18n.t('prediction.phases.luteal.sublabel'),
       start: lutealStart,
       end: lutealEnd,
       color: Colors.lavender,
       tint: Colors.lavenderTint,
       icon: 'moon',
-      momentum: 'Energy winding down',
-      description: 'Progesterone rises then falls. Cravings, mood swings, or fatigue are common as your next period approaches.',
+      momentum: i18n.t('prediction.phases.luteal.momentum'),
+      description: i18n.t('prediction.phases.luteal.description'),
     },
   ];
 
@@ -139,9 +140,9 @@ function buildPhases(averageCycleLength: number, averagePeriodLength: number): P
  */
 function currentPhase(phases: PhaseInfo[], phaseLabel: string | null, day: number | null): PhaseInfo {
   if (phaseLabel) {
-    // Backend sends "Menstrual phase", local labels are just "Menstrual" — startsWith bridges
-    // the two without needing either side's wording to match exactly.
-    const match = phases.find((p) => phaseLabel.startsWith(p.label));
+    // Backend sends "Menstrual phase" (always English); matched on the phase's stable key so
+    // this keeps working whatever language the local labels are shown in.
+    const match = phases.find((p) => phaseLabel.toLowerCase().startsWith(p.key));
     if (match) return match;
   }
   if (day != null) return phases.find((p) => day <= p.end) ?? phases[phases.length - 1];
@@ -150,6 +151,7 @@ function currentPhase(phases: PhaseInfo[], phaseLabel: string | null, day: numbe
 
 export default function PredictionScreen() {
   const { periodEntries } = useAppState();
+  const { t } = useTranslation();
   const [recapCycle, setRecapCycle] = useState<RecapCycle | null>(null);
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
   // GET /menstrual/prediction doesn't include lastPeriodStart (it's not part of "predicting
@@ -209,10 +211,10 @@ export default function PredictionScreen() {
   if (!dataLoaded) {
     return (
       <ScreenContainer edges={['top', 'left', 'right']}>
-        <ScreenHeader title="Cycle Prediction" subtitle="Based on your history" />
+        <ScreenHeader title={t('prediction.title')} subtitle={t('prediction.subtitle')} />
         <View style={styles.loadingWrap}>
           <AppText variant="small" color={Colors.textMuted}>
-            Loading your prediction…
+            {t('prediction.loading')}
           </AppText>
         </View>
       </ScreenContainer>
@@ -221,7 +223,7 @@ export default function PredictionScreen() {
 
   return (
     <ScreenContainer edges={['top', 'left', 'right']}>
-      <ScreenHeader title="Cycle Prediction" subtitle="Based on your history" />
+      <ScreenHeader title={t('prediction.title')} subtitle={t('prediction.subtitle')} />
 
       <Card padded={false} style={styles.heroCard} noShadow>
         <LinearGradient
@@ -230,35 +232,35 @@ export default function PredictionScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.heroGradient}>
           <AppText variant="caption" color="rgba(255,255,255,0.75)">
-            NEXT PERIOD ESTIMATED
+            {t('prediction.nextEstimated')}
           </AppText>
           <AppText variant="display" color={Colors.textOnPrimary} style={styles.heroRange}>
-            {nextPeriodStart && nextPeriodEnd ? formatRange(nextPeriodStart, nextPeriodEnd) : 'Not enough data yet'}
+            {nextPeriodStart && nextPeriodEnd ? formatRange(nextPeriodStart, nextPeriodEnd) : t('prediction.notEnoughData')}
           </AppText>
           <AppText variant="body" color="rgba(255,255,255,0.85)">
-            {daysUntilNext != null ? `${daysUntilNext} days from today` : 'Record a period to get a prediction'}
+            {daysUntilNext != null ? t('prediction.daysFromToday', { n: daysUntilNext }) : t('prediction.recordToPredict')}
           </AppText>
 
           <View style={styles.heroStatsRow}>
-            <HeroChip value={`${averageCycleLength} days`} label="Cycle Length" />
-            <HeroChip value={`${averagePeriodLength} days`} label="Period Length" />
-            <HeroChip value={lastPeriodStart ? formatShort(lastPeriodStart) : '—'} label="Last Period" />
+            <HeroChip value={formatDays(averageCycleLength)} label={t('prediction.cycleLength')} />
+            <HeroChip value={formatDays(averagePeriodLength)} label={t('prediction.periodLength')} />
+            <HeroChip value={lastPeriodStart ? formatShort(lastPeriodStart) : '—'} label={t('prediction.lastPeriod')} />
           </View>
         </LinearGradient>
       </Card>
 
       <Card style={styles.card} delay={60}>
         <AppText variant="h3" style={styles.cardTitle}>
-          You are currently in
+          {t('prediction.currentlyIn')}
         </AppText>
         <View style={[styles.phaseBox, { backgroundColor: phase.tint }]}>
           <IconCircle color={Colors.surface} size={40}>
             <Ionicons name={phase.icon} size={18} color={phase.color} />
           </IconCircle>
           <View style={{ flex: 1 }}>
-            <AppText variant="bodyMedium">{phase.label} Phase</AppText>
+            <AppText variant="bodyMedium">{t('prediction.phaseTitle', { phase: phase.label })}</AppText>
             <AppText variant="small" color={Colors.textSecondary} style={{ marginTop: 2 }}>
-              Day {prediction?.currentDay ?? '—'} of {averageCycleLength} · {phase.momentum}
+              {t('prediction.dayOf', { day: prediction?.currentDay ?? '—', total: averageCycleLength })} · {phase.momentum}
             </AppText>
           </View>
         </View>
@@ -269,7 +271,7 @@ export default function PredictionScreen() {
 
       <Card style={styles.card} delay={100}>
         <AppText variant="h3" style={styles.cardTitle}>
-          Cycle Phases
+          {t('prediction.cyclePhases')}
         </AppText>
         <View style={styles.phaseBar}>
           {phases.map((p) => (
@@ -287,7 +289,7 @@ export default function PredictionScreen() {
                 </AppText>
               </View>
               <AppText variant="small" color={Colors.textMuted}>
-                Day {p.start}-{p.end}
+                {t('prediction.dayRange', { start: p.start, end: p.end })}
               </AppText>
             </View>
           ))}
@@ -296,18 +298,18 @@ export default function PredictionScreen() {
 
       <Card style={styles.card} delay={140}>
         <AppText variant="h3" style={styles.cardTitle}>
-          Cycle History
+          {t('prediction.cycleHistory')}
         </AppText>
         {history.length === 0 ? (
           <View style={styles.historyEmpty}>
             <Ionicons name="calendar-outline" size={16} color={Colors.textMuted} />
             <AppText variant="small" color={Colors.textMuted} style={styles.historyEmptyText}>
-              No cycles logged yet — record a period on Calendar to start building your history.
+              {t('prediction.historyEmpty')}
             </AppText>
           </View>
         ) : (
           <AppText variant="small" color={Colors.textMuted} style={styles.historyHint}>
-            Tap a cycle to see everything logged for it.
+            {t('prediction.historyHint')}
           </AppText>
         )}
         {history.map((p, i) => (
@@ -320,12 +322,12 @@ export default function PredictionScreen() {
                 {formatRange(p.start, p.end)}, {p.start.getFullYear()}
               </AppText>
               <AppText variant="small" color={Colors.textMuted} style={{ marginTop: 2 }}>
-                {p.cycleLength ? `${p.cycleLength}-day cycle` : 'First recorded cycle'}
+                {p.cycleLength ? t('prediction.cycleOfDays', { n: p.cycleLength }) : t('prediction.firstCycle')}
               </AppText>
             </View>
             <View style={styles.historyPill}>
               <AppText variant="small" color={Colors.primary}>
-                {daysBetween(p.start, p.end) + 1} days
+                {formatDays(daysBetween(p.start, p.end) + 1)}
               </AppText>
             </View>
             <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
@@ -336,7 +338,7 @@ export default function PredictionScreen() {
       <View style={styles.disclaimer}>
         <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} />
         <AppText variant="small" style={styles.disclaimerText}>
-          Estimated based on your previous records. Actual dates may vary — this is not medical advice.
+          {t('prediction.disclaimer')}
         </AppText>
       </View>
 

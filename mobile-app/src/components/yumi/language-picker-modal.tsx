@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Colors, Radius, Shadow, Spacing } from '@/constants/theme';
@@ -19,20 +20,20 @@ type Props = {
 };
 
 /**
- * "Choose Language" popup off Profile's Language row. Only adds the option for now — picking
- * Khmer saves the preference (same optimistic PUT /profile/me pattern as the toggles above it on
- * Profile) but doesn't retranslate the app's own UI text yet; that's a separate, larger effort.
+ * "Choose Language" popup off Profile's Language row. Picking a language switches the whole
+ * app's UI text immediately (see i18n/index.ts) and saves it to the account too.
  * Selecting a row applies immediately and closes, same one-tap feel as a toggle switch — no
  * separate "Save" step for a two-option pick like this.
  */
 export function LanguagePickerModal({ visible, value, onSelect, onClose }: Props) {
+  const { t } = useTranslation();
   return (
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={[styles.sheet, Shadow.raised]}>
           <View style={styles.handle} />
           <View style={styles.headerRow}>
-            <AppText variant="h2">Choose Language</AppText>
+            <AppText variant="h2">{t('profile.chooseLanguage')}</AppText>
             <Pressable onPress={onClose} hitSlop={8}>
               <Ionicons name="close" size={22} color={Colors.textMuted} />
             </Pressable>
@@ -59,7 +60,7 @@ export function LanguagePickerModal({ visible, value, onSelect, onClose }: Props
           <View style={styles.noteBox}>
             <Ionicons name="information-circle-outline" size={15} color={Colors.textMuted} />
             <AppText variant="small" color={Colors.textMuted} style={styles.noteText}>
-              More of the app will be translated into Khmer soon — for now this just saves your preference.
+              {t('profile.languageNote')}
             </AppText>
           </View>
         </View>

@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dimensions,
   NativeScrollEvent,
@@ -15,6 +16,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Button } from '@/components/yumi/button';
+import { LanguageToggle } from '@/components/yumi/language-toggle';
 import { Mascot } from '@/components/yumi/mascot';
 import { ProgressDots } from '@/components/yumi/progress-dots';
 import { Colors, Spacing } from '@/constants/theme';
@@ -23,23 +25,21 @@ const { width } = Dimensions.get('window');
 
 const pages = [
   {
-    title: 'Track your cycle with ease',
-    body: 'Log your period in seconds and Yumi quietly keeps track of your cycle, flow, and symptoms for you.',
+    key: 'track',
     illustration: <TrackIllustration />,
   },
   {
-    title: 'Learn about your body',
-    body: 'Bite-sized, judgement-free articles about periods, hygiene, and symptoms — written for first-timers.',
+    key: 'learn',
     illustration: <LearnIllustration />,
   },
   {
-    title: 'Ask Yumi anything',
-    body: "No question is too awkward. Yumi's AI assistant is here 24/7 to help you understand what's normal.",
+    key: 'ask',
     illustration: <Mascot size={150} waving={false} />,
   },
-];
+] as const;
 
 export default function OnboardingScreen() {
+  const { t } = useTranslation();
   const [index, setIndex] = useState(0);
   const scrollRef = useRef<ScrollViewInstance>(null);
   const isLast = index === pages.length - 1;
@@ -59,11 +59,11 @@ export default function OnboardingScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.skipRow}>
-        <View />
+        <LanguageToggle />
         {!isLast && (
           <Pressable onPress={finish} hitSlop={8}>
             <AppText variant="bodyMedium" color={Colors.textSecondary}>
-              Skip
+              {t('common.skip')}
             </AppText>
           </Pressable>
         )}
@@ -82,10 +82,10 @@ export default function OnboardingScreen() {
               {page.illustration}
             </Animated.View>
             <AppText variant="h1" center style={styles.title}>
-              {page.title}
+              {t(`onboarding.${page.key}.title`)}
             </AppText>
             <AppText variant="bodyLarge" center color={Colors.textSecondary} style={styles.body}>
-              {page.body}
+              {t(`onboarding.${page.key}.body`)}
             </AppText>
           </View>
         ))}
@@ -94,7 +94,7 @@ export default function OnboardingScreen() {
       <View style={styles.footer}>
         <ProgressDots count={pages.length} activeIndex={index} />
         <Button
-          label={isLast ? 'Get Started' : 'Continue'}
+          label={isLast ? t('onboarding.getStarted') : t('common.continue')}
           onPress={() => (isLast ? finish() : goTo(index + 1))}
           style={styles.cta}
         />

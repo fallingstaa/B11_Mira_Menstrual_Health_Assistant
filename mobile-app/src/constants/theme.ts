@@ -63,7 +63,27 @@ export const FontsToLoad = {
   Poppins_500Medium: require('@expo-google-fonts/poppins/500Medium/Poppins_500Medium.ttf'),
   Poppins_600SemiBold: require('@expo-google-fonts/poppins/600SemiBold/Poppins_600SemiBold.ttf'),
   Poppins_700Bold: require('@expo-google-fonts/poppins/700Bold/Poppins_700Bold.ttf'),
+  KohSantepheap_400Regular: require('@expo-google-fonts/koh-santepheap/400Regular/KohSantepheap_400Regular.ttf'),
+  KohSantepheap_700Bold: require('@expo-google-fonts/koh-santepheap/700Bold/KohSantepheap_700Bold.ttf'),
 };
+
+/**
+ * Poppins has no Khmer glyphs, so when the app is in Khmer every Poppins weight is swapped
+ * for Koh Santepheap (see i18n/fonts.ts). Koh Santepheap only ships Regular and Bold, so
+ * medium maps to Regular and semi-bold to Bold.
+ */
+export const KhmerFontFor: Record<string, string> = {
+  [Fonts.regular]: 'KohSantepheap_400Regular',
+  [Fonts.medium]: 'KohSantepheap_400Regular',
+  [Fonts.semiBold]: 'KohSantepheap_700Bold',
+  [Fonts.bold]: 'KohSantepheap_700Bold',
+};
+
+/**
+ * Khmer stacks vowels and subscript consonants above and below the base line, so the
+ * Latin-tuned line heights in typography.ts clip it — scale them up when in Khmer.
+ */
+export const KHMER_LINE_HEIGHT_SCALE = 1.4;
 
 export const Spacing = {
   xs: 4,

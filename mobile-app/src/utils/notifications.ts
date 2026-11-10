@@ -1,6 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import i18n from '@/i18n';
+
 import { Colors } from '@/constants/theme';
 import { PeriodDayEntry } from '@/context/app-state';
 import { addDays, dateKey, daysBetween } from '@/utils/date';
@@ -88,7 +90,7 @@ function ensureHandler() {
 async function ensureAndroidChannel() {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
-    name: 'Period reminders',
+    name: i18n.t('localAlerts.channelName'),
     importance: Notifications.AndroidImportance.DEFAULT,
   });
 }
@@ -156,7 +158,7 @@ export async function syncPeriodNotifications(
   await scheduleIfFuture(
     ALERT_IDS[0],
     triggerFor(1, new Date(Date.now() + 60 * 60 * 1000)),
-    "Dates logged! We recalculated your cycle timeline so you don't have to.",
+    i18n.t('localAlerts.a1'),
   );
 
   // Alert 2 (Mid-Cycle Check-In) — (cycle length - 14) days after the start. Unconditional.
@@ -165,21 +167,21 @@ export async function syncPeriodNotifications(
   await scheduleIfFuture(
     ALERT_IDS[1],
     triggerFor(2, atAlertTime(lastPeriodStartDate, midCycleOffset)),
-    'Mid-cycle check-in. Time to see how your body is feeling today.',
+    i18n.t('localAlerts.a2'),
   );
 
   // Alert 3 (Pre-PMS Heads-Up) — 7 days before. Unconditional.
   await scheduleIfFuture(
     ALERT_IDS[2],
     triggerFor(3, atAlertTime(nextPeriodStartDate, -7)),
-    'One week out from your period. Low energy or mood shifts? Completely normal.',
+    i18n.t('localAlerts.a3'),
   );
 
   // Alert 4 (Preparation) — 2 days before. Unconditional.
   await scheduleIfFuture(
     ALERT_IDS[3],
     triggerFor(4, atAlertTime(nextPeriodStartDate, -2)),
-    'Heads up: Your period is due in 2 days. Restock your bag real quick.',
+    i18n.t('localAlerts.a4'),
   );
 
   // Alert 5 (Day-Of Check-In) — only if nothing's logged for the predicted day itself.
@@ -187,7 +189,7 @@ export async function syncPeriodNotifications(
     await scheduleIfFuture(
       ALERT_IDS[4],
       triggerFor(5, atAlertTime(nextPeriodStartDate, 0)),
-      'Is your period here today? Tap to log it real quick.',
+      i18n.t('localAlerts.a5'),
     );
   }
 
@@ -199,27 +201,27 @@ export async function syncPeriodNotifications(
     await scheduleIfFuture(
       ALERT_IDS[5],
       triggerFor(6, atAlertTime(nextPeriodStartDate, 3)),
-      "Cycles do their own thing sometimes. Log it whenever you're ready, no stress.",
+      i18n.t('localAlerts.a6'),
     );
     await scheduleIfFuture(
       ALERT_IDS[6],
       triggerFor(7, atAlertTime(nextPeriodStartDate, 5)),
-      'Still waiting on your period? It happens. Update your dates when it pulls up.',
+      i18n.t('localAlerts.a7'),
     );
     await scheduleIfFuture(
       ALERT_IDS[7],
       triggerFor(8, atAlertTime(nextPeriodStartDate, 7)),
-      'Quick cycle vibe check. Tap here so we can keep your predictions accurate.',
+      i18n.t('localAlerts.a8'),
     );
     await scheduleIfFuture(
       ALERT_IDS[8],
       triggerFor(9, atAlertTime(nextPeriodStartDate, 10)),
-      "We paused your predictions for now! Tap to log your start date whenever you're ready.",
+      i18n.t('localAlerts.a9'),
     );
     await scheduleIfFuture(
       ALERT_IDS[9],
       triggerFor(10, atAlertTime(nextPeriodStartDate, 14)),
-      'Still waiting or missed a log? Drop your dates in the app to get your timeline back on track.',
+      i18n.t('localAlerts.a10'),
     );
   }
 }

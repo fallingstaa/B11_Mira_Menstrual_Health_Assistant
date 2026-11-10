@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { AppText } from '@/components/yumi/app-text';
@@ -19,7 +20,7 @@ import { pastPeriods } from '@/constants/mock-data';
 import { Colors, Radius, Shadow, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
 import { apiRequest } from '@/utils/api';
-import { dateKey, getMonthGrid, isPastMonth, isSameDay, isSameMonth, isWithinRange, monthLabel, parseIsoDate, WEEKDAY_LABELS } from '@/utils/date';
+import { dateKey, getMonthGrid, isPastMonth, isSameDay, isSameMonth, isWithinRange, monthLabel, parseIsoDate, weekdayLabels } from '@/utils/date';
 
 type DayStatus = 'period' | 'period-end' | 'predicted' | 'fertile' | 'none';
 
@@ -34,6 +35,7 @@ type CalendarPrediction = {
 
 export default function CalendarScreen() {
   const { periodEntries, togglePeriodDay, setPeriodEndDay, updatePeriodDayEntry, commitDays } = useAppState();
+  const { t } = useTranslation();
   // The real device date, not the app's fixed demo date — so "Today" always lands on the actual day.
   const [today] = useState(() => new Date());
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -118,10 +120,7 @@ export default function CalendarScreen() {
    */
   const openDayEditor = (date: Date) => {
     if (!isSameMonth(date, today)) {
-      Alert.alert(
-        'Record locked',
-        "This day is from a previous month and was already logged, so it can't be changed anymore. Past records lock once saved to keep your predictions accurate.",
-      );
+      Alert.alert(t('calendar.lockedTitle'), t('calendar.lockedPastMonth'));
       return;
     }
     setSelected(date);
@@ -153,14 +152,11 @@ export default function CalendarScreen() {
       return;
     }
     if (!isPastMonth(date, today)) {
-      Alert.alert("That hasn't happened yet", "You can't log a period day before it happens.");
+      Alert.alert(t('calendar.futureTitle'), t('calendar.futureBody'));
       return;
     }
     if (periodEntries[dateKey(date)]) {
-      Alert.alert(
-        'Record locked',
-        "This day was already logged and can't be changed anymore. Past records lock once saved to keep your predictions accurate.",
-      );
+      Alert.alert(t('calendar.lockedTitle'), t('calendar.lockedLogged'));
       return;
     }
     toggleMultiSelect(date);
@@ -184,7 +180,7 @@ export default function CalendarScreen() {
         'calendar',
       );
     } catch (err) {
-      Alert.alert("Couldn't save", err instanceof Error ? err.message : 'Please try again.');
+      Alert.alert(t('common.couldntSave'), err instanceof Error ? err.message : t('common.tryAgain'));
       throw err;
     }
 
@@ -199,7 +195,7 @@ export default function CalendarScreen() {
   return (
     <ScreenContainer tabBar>
       <AppText variant="h1" style={styles.pageTitle}>
-        Calendar
+        {t('tabs.calendar')}
       </AppText>
 
       <Card style={styles.calendarCard}>
@@ -214,7 +210,7 @@ export default function CalendarScreen() {
         </View>
 
         <View style={styles.weekdayRow}>
-          {WEEKDAY_LABELS.map((w, i) => (
+          {weekdayLabels().map((w, i) => (
             <AppText key={i} variant="caption" style={styles.weekdayLabel}>
               {w}
             </AppText>
@@ -263,23 +259,21 @@ export default function CalendarScreen() {
         </Animated.View>
 
         <View style={styles.legendRow}>
-          <LegendItem color={Colors.primary} label="Period" />
-          <LegendItem color={Colors.tint200} label="Estimated" />
-          <LegendItem color={Colors.teal} label="Fertile window" />
+          <LegendItem color={Colors.primary} label={t('calendar.legendPeriod')} />
+          <LegendItem color={Colors.tint200} label={t('calendar.legendEstimated')} />
+          <LegendItem color={Colors.teal} label={t('calendar.legendFertile')} />
         </View>
       </Card>
 
       {!selectedEntry && (status === 'predicted' || status === 'fertile') && (
         <AppText variant="small" color={Colors.textSecondary} style={styles.hint}>
-          {status === 'predicted'
-            ? 'Estimated period day, based on your cycle history.'
-            : 'Estimated fertile window.'}
+          {status === 'predicted' ? t('calendar.hintPredicted') : t('calendar.hintFertile')}
         </AppText>
       )}
 
       {isPastMonth(cursor, today) && multiSelectedDays.length === 0 && (
         <AppText variant="small" color={Colors.textSecondary} style={styles.hint}>
-          Past month — tap the days you want to log, then Record. They lock for editing once saved.
+          {t('calendar.hintPastMonth')}
         </AppText>
       )}
 
@@ -287,16 +281,16 @@ export default function CalendarScreen() {
         <View style={styles.batchBar}>
           <View style={styles.batchBarText}>
             <AppText variant="bodyMedium" numberOfLines={1} color={Colors.primary}>
-              {multiSelectedDays.length} day{multiSelectedDays.length === 1 ? '' : 's'} selected
+              {t(multiSelectedDays.length === 1 ? 'calendar.selectedOne' : 'calendar.selectedOther', { n: multiSelectedDays.length })}
             </AppText>
             <Pressable onPress={() => setMultiSelectedDays([])} hitSlop={8}>
               <AppText variant="small" numberOfLines={1} color={Colors.textMuted}>
-                Clear
+                {t('calendar.clear')}
               </AppText>
             </Pressable>
           </View>
           <Button
-            label="Record"
+            label={t('calendar.record')}
             fullWidth={false}
             onPress={() => setBatchModalVisible(true)}
             style={styles.batchRecordButton}
@@ -314,7 +308,7 @@ export default function CalendarScreen() {
       />
 
       <Button
-        label="View Prediction Details"
+        label={t('calendar.viewPrediction')}
         variant="secondary"
         icon={<Ionicons name="stats-chart" size={16} color={Colors.primary} />}
         onPress={() => router.push('/prediction')}
@@ -334,7 +328,7 @@ export default function CalendarScreen() {
           <View style={[styles.popupSheet, Shadow.raised]}>
             <View style={styles.popupHandle} />
             <View style={styles.popupHeaderRow}>
-              <AppText variant="h2">Day Details</AppText>
+              <AppText variant="h2">{t('calendar.dayDetails')}</AppText>
               <Pressable onPress={() => setDayEditorVisible(false)} hitSlop={8}>
                 <Ionicons name="close" size={22} color={Colors.textMuted} />
               </Pressable>
@@ -357,7 +351,7 @@ export default function CalendarScreen() {
                   try {
                     await commitDays([{ ...selectedEntry, date: selected }], 'calendar');
                   } catch (err) {
-                    Alert.alert("Couldn't save", err instanceof Error ? err.message : 'Please try again.');
+                    Alert.alert(t('common.couldntSave'), err instanceof Error ? err.message : t('common.tryAgain'));
                     throw err;
                   }
                   // Brief pause so the "Recorded!" confirmation is actually visible before the

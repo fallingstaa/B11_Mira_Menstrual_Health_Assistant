@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Chip } from '@/components/yumi/chip';
@@ -25,6 +26,7 @@ type Props = {
  * last-period-one-date.tsx) so the question behaves identically wherever it's asked.
  */
 export function CycleLengthQuestion({ answer, onAnswerChange, cycleLength, onCycleLengthChange }: Props) {
+  const { t } = useTranslation();
   const step = (delta: number) => {
     onCycleLengthChange(Math.min(MAX_CYCLE_LENGTH, Math.max(MIN_CYCLE_LENGTH, cycleLength + delta)));
   };
@@ -32,14 +34,14 @@ export function CycleLengthQuestion({ answer, onAnswerChange, cycleLength, onCyc
   return (
     <View>
       <AppText variant="bodyMedium" style={styles.label}>
-        Do you know your usual cycle length?
+        {t('lengthQuestion.cycleQuestion')}
       </AppText>
       <AppText variant="small" color={Colors.textSecondary} style={styles.helper}>
-        The days from the start of one period to the start of the next — not how many days you bleed for.
+        {t('lengthQuestion.cycleHelper')}
       </AppText>
       <View style={styles.chipRow}>
-        <Chip label="Yes" selected={answer === 'yes'} onPress={() => onAnswerChange('yes')} />
-        <Chip label="I don't know" selected={answer === 'no'} onPress={() => onAnswerChange('no')} />
+        <Chip label={t('lengthQuestion.yes')} selected={answer === 'yes'} onPress={() => onAnswerChange('yes')} />
+        <Chip label={t('lengthQuestion.dontKnow')} selected={answer === 'no'} onPress={() => onAnswerChange('no')} />
       </View>
 
       {answer === 'yes' && (
@@ -50,7 +52,7 @@ export function CycleLengthQuestion({ answer, onAnswerChange, cycleLength, onCyc
           <View style={styles.stepperValueBox}>
             <AppText variant="h3">{cycleLength}</AppText>
             <AppText variant="small" color={Colors.textSecondary}>
-              days
+              {t('lengthQuestion.days')}
             </AppText>
           </View>
           <Pressable style={styles.stepButton} onPress={() => step(1)} hitSlop={8}>
@@ -63,8 +65,7 @@ export function CycleLengthQuestion({ answer, onAnswerChange, cycleLength, onCyc
         <View style={styles.note}>
           <Ionicons name="information-circle" size={18} color={Colors.info} />
           <AppText variant="small" color={Colors.textSecondary} style={styles.noteBody}>
-            No worries! We&apos;ll start with the average 28 days and update automatically as you log future
-            periods.
+            {t('lengthQuestion.cycleUnknown')}
           </AppText>
         </View>
       )}

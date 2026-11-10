@@ -1,10 +1,12 @@
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Button } from '@/components/yumi/button';
+import { LanguageToggle } from '@/components/yumi/language-toggle';
 import { MascotMini } from '@/components/yumi/mascot';
 import { ScreenContainer } from '@/components/yumi/screen-container';
 import { SocialButton } from '@/components/yumi/social-button';
@@ -12,6 +14,7 @@ import { TextField } from '@/components/yumi/text-field';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
 import { useAuth } from '@/context/auth-context';
+import i18n from '@/i18n';
 
 const MIN_AGE = 9;
 const MAX_AGE = 100;
@@ -21,14 +24,15 @@ function registerErrorMessage(err: unknown): string {
   // AUTH-011: checked first, and matched before 'auth/invalid-email' below — a genuinely
   // duplicate email is a distinct Firebase error code from a malformed one, never both at once,
   // so this can't fall through to the "looks off" message for a real duplicate.
-  if (code === 'auth/email-already-in-use') return 'This email is already registered. Please log in instead.';
-  if (code === 'auth/invalid-email') return 'That email address looks off — check for a typo.';
-  if (code === 'auth/weak-password') return 'Password must be at least 8 characters.';
-  return 'Something went wrong creating your account. Please try again.';
+  if (code === 'auth/email-already-in-use') return i18n.t('auth.errors.emailInUse');
+  if (code === 'auth/invalid-email') return i18n.t('auth.errors.invalidEmail');
+  if (code === 'auth/weak-password') return i18n.t('auth.errors.passwordTooShort');
+  return i18n.t('auth.register.genericError');
 }
 
 export default function RegisterScreen() {
   const { register } = useAuth();
+  const { t } = useTranslation();
   const { setUserAge } = useAppState();
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
@@ -40,20 +44,20 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!name.trim() || !age.trim() || !email.trim() || !password) {
-      setError('Please fill in all fields.');
+      setError(t('auth.register.fillAllFields'));
       return;
     }
     const parsedAge = parseInt(age, 10);
     if (Number.isNaN(parsedAge) || parsedAge < MIN_AGE || parsedAge > MAX_AGE) {
-      setError(`Please enter a valid age between ${MIN_AGE} and ${MAX_AGE}.`);
+      setError(t('auth.register.invalidAge', { min: MIN_AGE, max: MAX_AGE }));
       return;
     }
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+      setError(t('auth.errors.passwordTooShort'));
       return;
     }
     if (password !== confirm) {
-      setError('Passwords don\'t match.');
+      setError(t('auth.register.passwordsDontMatch'));
       return;
     }
 
@@ -76,29 +80,32 @@ export default function RegisterScreen() {
 
   return (
     <ScreenContainer>
+      <View style={styles.languageRow}>
+        <LanguageToggle />
+      </View>
       <Animated.View entering={FadeInDown.duration(450)} style={styles.header}>
         <MascotMini size={44} />
         <AppText variant="h1" style={styles.headerTitle}>
-          Create your account
+          {t('auth.register.title')}
         </AppText>
         <AppText variant="body" color={Colors.textSecondary} center>
-          A safe, private space just for you.
+          {t('auth.register.subtitle')}
         </AppText>
       </Animated.View>
 
       <Animated.View entering={FadeInUp.duration(450).delay(120)}>
-        <TextField label="Name" icon="person-outline" placeholder="What should we call you?" value={name} onChangeText={setName} />
+        <TextField label={t('auth.register.name')} icon="person-outline" placeholder={t('auth.register.namePlaceholder')} value={name} onChangeText={setName} />
         <TextField
-          label="Age"
+          label={t('auth.register.age')}
           icon="gift-outline"
-          placeholder="How old are you?"
+          placeholder={t('auth.register.agePlaceholder')}
           keyboardType="number-pad"
           maxLength={3}
           value={age}
           onChangeText={(text) => setAge(text.replace(/[^0-9]/g, ''))}
         />
         <TextField
-          label="Email"
+          label={t('auth.email')}
           icon="mail-outline"
           placeholder="you@example.com"
           keyboardType="email-address"
@@ -107,17 +114,17 @@ export default function RegisterScreen() {
           onChangeText={setEmail}
         />
         <TextField
-          label="Password"
+          label={t('auth.password')}
           icon="lock-closed-outline"
-          placeholder="At least 8 characters"
+          placeholder={t('auth.register.passwordPlaceholder')}
           isPassword
           value={password}
           onChangeText={setPassword}
         />
         <TextField
-          label="Confirm password"
+          label={t('auth.register.confirmPassword')}
           icon="lock-closed-outline"
-          placeholder="Re-enter password"
+          placeholder={t('auth.register.confirmPlaceholder')}
           isPassword
           value={confirm}
           onChangeText={setConfirm}
@@ -125,32 +132,32 @@ export default function RegisterScreen() {
         />
 
         <AppText variant="small" color={Colors.textMuted} style={styles.terms}>
-          By continuing, you agree to Yumi&apos;s Terms of Service and Privacy Policy. Your data always stays private.
+          {t('auth.register.terms')}
         </AppText>
 
-        <Button label="Create Account" onPress={handleRegister} loading={loading} style={styles.registerButton} />
+        <Button label={t('auth.register.submit')} onPress={handleRegister} loading={loading} style={styles.registerButton} />
 
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
-          <AppText variant="small">or continue with</AppText>
+          <AppText variant="small">{t('auth.orContinueWith')}</AppText>
           <View style={styles.dividerLine} />
         </View>
 
         {/* Google sign-in needs an OAuth client set up in Firebase/Google Cloud
             Console first — not wired to real auth yet. */}
         <SocialButton
-          label="Continue with Google"
-          onPress={() => Alert.alert('Coming soon', 'Google sign-in isn\'t set up yet — create an account with email for now.')}
+          label={t('auth.continueWithGoogle')}
+          onPress={() => Alert.alert(t('common.comingSoon'), t('auth.googleNotReady'))}
         />
       </Animated.View>
 
       <View style={styles.footer}>
         <AppText variant="body" color={Colors.textSecondary}>
-          Already have an account?{' '}
+          {t('auth.register.haveAccount')}{' '}
         </AppText>
         <Link href="/login" replace>
           <AppText variant="bodyMedium" color={Colors.primary}>
-            Log in
+            {t('auth.logIn')}
           </AppText>
         </Link>
       </View>
@@ -159,7 +166,8 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { alignItems: 'center', paddingTop: Spacing.xxl, paddingBottom: Spacing.xxl, gap: Spacing.sm },
+  languageRow: { alignItems: 'flex-end', paddingTop: Spacing.sm },
+  header: { alignItems: 'center', paddingTop: Spacing.lg, paddingBottom: Spacing.xxl, gap: Spacing.sm },
   headerTitle: { marginTop: Spacing.sm },
   terms: { lineHeight: 17, marginBottom: Spacing.xl },
   registerButton: { marginBottom: Spacing.xxl },

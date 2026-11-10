@@ -1,3 +1,8 @@
+import i18n from '@/i18n';
+
+// Labels below are getters, not plain strings, so they're looked up in the current language
+// every time a screen reads them (see i18n/locales) — no caller needs to translate them itself.
+
 /**
  * Static mock data powering the UI-only Yumi prototype.
  * Nothing here touches the backend — swap for real API/state once endpoints exist.
@@ -32,55 +37,55 @@ export const pastPeriods: { start: Date; end: Date }[] = [
 ];
 
 export const flowLevels = [
-  { key: 'spotting', label: 'Spotting', color: '#F8C2CF' },
-  { key: 'light', label: 'Light', color: '#F0A0B5' },
-  { key: 'medium', label: 'Medium', color: '#D94667' },
-  { key: 'heavy', label: 'Heavy', color: '#AD0E38' },
+  { key: 'spotting', get label() { return i18n.t('flow.spotting'); }, color: '#F8C2CF' },
+  { key: 'light', get label() { return i18n.t('flow.light'); }, color: '#F0A0B5' },
+  { key: 'medium', get label() { return i18n.t('flow.medium'); }, color: '#D94667' },
+  { key: 'heavy', get label() { return i18n.t('flow.heavy'); }, color: '#AD0E38' },
 ] as const;
 
 // Final list (locked 2026-08-20) — text-only, no icons/emoji by design. Keys are the values
 // actually stored/sent (kebab-case); labels are what's shown. Mirrored on the backend as
 // SYMPTOM_OPTIONS in utils/constants.js — update both together if this list ever changes.
 export const symptomOptions = [
-  { key: 'everything-is-fine', label: 'Everything is fine' },
-  { key: 'cramps', label: 'Cramps' },
-  { key: 'tender-breasts', label: 'Tender breasts' },
-  { key: 'headache', label: 'Headache' },
-  { key: 'acne', label: 'Acne' },
-  { key: 'backache', label: 'Backache' },
-  { key: 'fatigue', label: 'Fatigue' },
-  { key: 'cravings', label: 'Cravings' },
-  { key: 'insomnia', label: 'Insomnia' },
-  { key: 'abdominal-pain', label: 'Abdominal pain' },
-  { key: 'vaginal-itching', label: 'Vaginal itching' },
-  { key: 'vaginal-dryness', label: 'Vaginal dryness' },
-  { key: 'hot-flashes', label: 'Hot flashes' },
-  { key: 'night-sweats', label: 'Night sweats' },
-  { key: 'joint-pain', label: 'Joint pain' },
-  { key: 'brain-fog', label: 'Brain fog' },
-  { key: 'dry-skin', label: 'Dry skin' },
-  { key: 'dry-eyes', label: 'Dry eyes' },
+  { key: 'everything-is-fine', get label() { return i18n.t('symptoms.everything-is-fine'); } },
+  { key: 'cramps', get label() { return i18n.t('symptoms.cramps'); } },
+  { key: 'tender-breasts', get label() { return i18n.t('symptoms.tender-breasts'); } },
+  { key: 'headache', get label() { return i18n.t('symptoms.headache'); } },
+  { key: 'acne', get label() { return i18n.t('symptoms.acne'); } },
+  { key: 'backache', get label() { return i18n.t('symptoms.backache'); } },
+  { key: 'fatigue', get label() { return i18n.t('symptoms.fatigue'); } },
+  { key: 'cravings', get label() { return i18n.t('symptoms.cravings'); } },
+  { key: 'insomnia', get label() { return i18n.t('symptoms.insomnia'); } },
+  { key: 'abdominal-pain', get label() { return i18n.t('symptoms.abdominal-pain'); } },
+  { key: 'vaginal-itching', get label() { return i18n.t('symptoms.vaginal-itching'); } },
+  { key: 'vaginal-dryness', get label() { return i18n.t('symptoms.vaginal-dryness'); } },
+  { key: 'hot-flashes', get label() { return i18n.t('symptoms.hot-flashes'); } },
+  { key: 'night-sweats', get label() { return i18n.t('symptoms.night-sweats'); } },
+  { key: 'joint-pain', get label() { return i18n.t('symptoms.joint-pain'); } },
+  { key: 'brain-fog', get label() { return i18n.t('symptoms.brain-fog'); } },
+  { key: 'dry-skin', get label() { return i18n.t('symptoms.dry-skin'); } },
+  { key: 'dry-eyes', get label() { return i18n.t('symptoms.dry-eyes'); } },
 ];
 
 // Final list (locked 2026-08-20) — text-only, no icons/emoji by design. Keys are the values
 // actually stored/sent (kebab-case); labels are what's shown. Mirrored on the backend as
 // MOOD_OPTIONS in utils/constants.js — update both together if this list ever changes.
 export const moodOptions = [
-  { key: 'calm', label: 'Calm' },
-  { key: 'happy', label: 'Happy' },
-  { key: 'energetic', label: 'Energetic' },
-  { key: 'frisky', label: 'Frisky' },
-  { key: 'mood-swings', label: 'Mood swings' },
-  { key: 'irritated', label: 'Irritated' },
-  { key: 'sad', label: 'Sad' },
-  { key: 'anxious', label: 'Anxious' },
-  { key: 'depressed', label: 'Depressed' },
-  { key: 'feeling-guilty', label: 'Feeling guilty' },
-  { key: 'obsessive-thoughts', label: 'Obsessive thoughts' },
-  { key: 'low-energy', label: 'Low energy' },
-  { key: 'apathetic', label: 'Apathetic' },
-  { key: 'confused', label: 'Confused' },
-  { key: 'very-self-critical', label: 'Very self-critical' },
+  { key: 'calm', get label() { return i18n.t('moods.calm'); } },
+  { key: 'happy', get label() { return i18n.t('moods.happy'); } },
+  { key: 'energetic', get label() { return i18n.t('moods.energetic'); } },
+  { key: 'frisky', get label() { return i18n.t('moods.frisky'); } },
+  { key: 'mood-swings', get label() { return i18n.t('moods.mood-swings'); } },
+  { key: 'irritated', get label() { return i18n.t('moods.irritated'); } },
+  { key: 'sad', get label() { return i18n.t('moods.sad'); } },
+  { key: 'anxious', get label() { return i18n.t('moods.anxious'); } },
+  { key: 'depressed', get label() { return i18n.t('moods.depressed'); } },
+  { key: 'feeling-guilty', get label() { return i18n.t('moods.feeling-guilty'); } },
+  { key: 'obsessive-thoughts', get label() { return i18n.t('moods.obsessive-thoughts'); } },
+  { key: 'low-energy', get label() { return i18n.t('moods.low-energy'); } },
+  { key: 'apathetic', get label() { return i18n.t('moods.apathetic'); } },
+  { key: 'confused', get label() { return i18n.t('moods.confused'); } },
+  { key: 'very-self-critical', get label() { return i18n.t('moods.very-self-critical'); } },
 ];
 
 export type HealthTip = {
@@ -99,25 +104,37 @@ export type HealthTip = {
 export const healthTips: HealthTip[] = [
   {
     id: 'h1',
-    tag: 'Wellness',
+    get tag() {
+      return i18n.t('healthTips.tags.wellness');
+    },
     tagColor: '#3B82F6',
     tagTint: '#EAF1FE',
     icon: 'water-outline',
     iconColor: '#3B82F6',
     iconTint: '#EAF1FE',
-    title: 'Stay hydrated!',
-    body: 'Drink 8 glasses of water to help reduce bloating.',
+    get title() {
+      return i18n.t('healthTips.h1.title');
+    },
+    get body() {
+      return i18n.t('healthTips.h1.body');
+    },
   },
   {
     id: 'h2',
-    tag: 'Pain',
+    get tag() {
+      return i18n.t('healthTips.tags.pain');
+    },
     tagColor: '#E8A23A',
     tagTint: '#FDF3E3',
     icon: 'thermometer-outline',
     iconColor: '#E8A23A',
     iconTint: '#FDF3E3',
-    title: 'Cramp relief',
-    body: 'A warm compress on your lower abdomen eases cramps.',
+    get title() {
+      return i18n.t('healthTips.h2.title');
+    },
+    get body() {
+      return i18n.t('healthTips.h2.body');
+    },
   },
 ];
 

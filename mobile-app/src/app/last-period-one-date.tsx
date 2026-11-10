@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/yumi/button';
 import { Card } from '@/components/yumi/card';
@@ -22,6 +23,7 @@ import { useAppState } from '@/context/app-state';
  */
 export default function LastPeriodOneDateScreen() {
   const { markPeriodDay, setAverageCycleLength, setAveragePeriodDuration, commitDays } = useAppState();
+  const { t } = useTranslation();
   const [date, setDate] = useState<Date | null>(null);
   const [knowsCycleLength, setKnowsCycleLength] = useState<CycleLengthAnswer>(null);
   const [cycleLength, setCycleLength] = useState(DEFAULT_CYCLE_LENGTH);
@@ -32,8 +34,8 @@ export default function LastPeriodOneDateScreen() {
 
   useEffect(() => {
     if (!saved) return;
-    const t = setTimeout(() => router.dismissTo('/(tabs)/home'), 1100);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => router.dismissTo('/(tabs)/home'), 1100);
+    return () => clearTimeout(timer);
   }, [saved]);
 
   const canSave = !!date && knowsCycleLength !== null && knowsPeriodLength !== null;
@@ -48,7 +50,7 @@ export default function LastPeriodOneDateScreen() {
     try {
       await commitDays([{ date, symptoms: [], mood: [] }], 'last_period_one_date');
     } catch (err) {
-      Alert.alert("Couldn't save", err instanceof Error ? err.message : 'Please try again.');
+      Alert.alert(t('common.couldntSave'), err instanceof Error ? err.message : t('common.tryAgain'));
       return;
     } finally {
       setSaving(false);
@@ -69,11 +71,11 @@ export default function LastPeriodOneDateScreen() {
   return (
     <ScreenContainer
       edges={['top', 'left', 'right', 'bottom']}
-      footer={<Button label="Save & Continue" onPress={handleSave} disabled={!canSave} loading={saving} />}>
-      <ScreenHeader title="Your Last Period" subtitle="Just the start date — no end date needed" />
+      footer={<Button label={t('lastPeriod.saveContinue')} onPress={handleSave} disabled={!canSave} loading={saving} />}>
+      <ScreenHeader title={t('lastPeriod.title')} subtitle={t('lastPeriod.subtitle')} />
 
       <Card style={styles.card}>
-        <DatePickerField label="Period Start Date" date={date} onChange={setDate} maximumDate={new Date()} />
+        <DatePickerField label={t('lastPeriod.startDate')} date={date} onChange={setDate} maximumDate={new Date()} />
       </Card>
 
       {date && (
@@ -98,7 +100,7 @@ export default function LastPeriodOneDateScreen() {
         </>
       )}
 
-      {saved && <SuccessOverlay message="Saved!" />}
+      {saved && <SuccessOverlay message={t('lastPeriod.saved')} />}
     </ScreenContainer>
   );
 }

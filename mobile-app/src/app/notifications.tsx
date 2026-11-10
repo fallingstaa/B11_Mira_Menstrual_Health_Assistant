@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
 import { AppText } from '@/components/yumi/app-text';
@@ -10,7 +11,8 @@ import { ScreenContainer } from '@/components/yumi/screen-container';
 import { ScreenHeader } from '@/components/yumi/screen-header';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { apiRequest } from '@/utils/api';
-import { addDays, formatShort, isSameDay } from '@/utils/date';
+import i18n, { localizeReminder } from '@/i18n';
+import { addDays, formatShort, formatTime, isSameDay } from '@/utils/date';
 
 /** One `GET /api/reminders` entry — see NotificationReminder.js/notificationService.js for how/when these get created. */
 type Reminder = {
@@ -33,13 +35,14 @@ const TYPE_META: Record<Reminder['type'], { icon: keyof typeof Ionicons.glyphMap
 function formatReminderTime(iso: string): string {
   const date = new Date(iso);
   const now = new Date();
-  const timeStr = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  if (isSameDay(date, now)) return `Today · ${timeStr}`;
-  if (isSameDay(date, addDays(now, -1))) return `Yesterday · ${timeStr}`;
+  const timeStr = formatTime(date);
+  if (isSameDay(date, now)) return i18n.t('notifications.todayAt', { time: timeStr });
+  if (isSameDay(date, addDays(now, -1))) return i18n.t('notifications.yesterdayAt', { time: timeStr });
   return `${formatShort(date)} · ${timeStr}`;
 }
 
 export default function NotificationsScreen() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const unreadCount = items.filter((n) => !n.read).length;
@@ -91,13 +94,13 @@ export default function NotificationsScreen() {
   return (
     <ScreenContainer edges={['top', 'left', 'right']}>
       <ScreenHeader
-        title="Notifications"
-        subtitle={loading ? 'Loading…' : unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
+        title={t('notifications.title')}
+        subtitle={loading ? t('common.loading') : unreadCount > 0 ? t('notifications.unread', { n: unreadCount }) : t('notifications.allCaughtUp')}
         right={
           unreadCount > 0 ? (
             <Pressable onPress={markAllRead} hitSlop={8}>
               <AppText variant="small" color={Colors.primary}>
-                Mark all
+                {t('notifications.markAll')}
               </AppText>
             </Pressable>
           ) : null
@@ -110,10 +113,10 @@ export default function NotificationsScreen() {
             <Ionicons name="notifications-outline" size={24} color={Colors.primary} />
           </IconCircle>
           <AppText variant="bodyMedium" color={Colors.textSecondary} style={{ marginTop: Spacing.md }}>
-            Nothing here yet
+            {t('notifications.emptyTitle')}
           </AppText>
           <AppText variant="small" color={Colors.textMuted} center style={{ marginTop: 4 }}>
-            Period reminders and check-in nudges will show up here as they become relevant.
+            {t('notifications.emptyBody')}
           </AppText>
         </View>
       )}
@@ -130,12 +133,12 @@ export default function NotificationsScreen() {
                 <View style={styles.textWrap}>
                   <View style={styles.titleRow}>
                     <AppText variant="bodyMedium" style={{ flex: 1 }} numberOfLines={1}>
-                      {item.title}
+                      {localizeReminder(item).title}
                     </AppText>
                     {!item.read && <View style={styles.unreadDot} />}
                   </View>
                   <AppText variant="small" numberOfLines={2} style={{ marginTop: 2 }}>
-                    {item.body}
+                    {localizeReminder(item).body}
                   </AppText>
                   <AppText variant="caption" style={{ marginTop: Spacing.sm }}>
                     {formatReminderTime(item.createdAt)}

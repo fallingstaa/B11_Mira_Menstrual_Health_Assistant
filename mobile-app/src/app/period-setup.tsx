@@ -1,41 +1,44 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Mascot } from '@/components/yumi/mascot';
 import { ScreenContainer } from '@/components/yumi/screen-container';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 
+type PeriodSetupKey = `periodSetup.${'now' | 'remember' | 'unknown'}.${'title' | 'subtitle'}`;
+
 const options: {
   key: string;
   icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  subtitle: string;
+  title: PeriodSetupKey;
+  subtitle: PeriodSetupKey;
   href: '/record-first-period' | '/last-period-one-date' | '/last-period-unknown';
   emphasized: boolean;
 }[] = [
   {
     key: 'active',
     icon: 'water',
-    title: "I'm on my period right now",
-    subtitle: 'Tap the days on a guided calendar as they happen',
+    title: 'periodSetup.now.title',
+    subtitle: 'periodSetup.now.subtitle',
     href: '/record-first-period',
     emphasized: true,
   },
   {
     key: 'last-start',
     icon: 'calendar-outline',
-    title: 'I remember my last period start date',
-    subtitle: 'Just the start date — plus your cycle length, if you know it',
+    title: 'periodSetup.remember.title',
+    subtitle: 'periodSetup.remember.subtitle',
     href: '/last-period-one-date',
     emphasized: false,
   },
   {
     key: 'unknown',
     icon: 'sparkles-outline',
-    title: " I don't remember any dates",
-    subtitle: "That's okay — Yumi will start you off with sensible defaults",
+    title: 'periodSetup.unknown.title',
+    subtitle: 'periodSetup.unknown.subtitle',
     href: '/last-period-unknown',
     emphasized: false,
   },
@@ -47,6 +50,7 @@ const options: {
  * "Skip for now" leaves period data empty and just returns to Home.
  */
 export default function PeriodSetupScreen() {
+  const { t } = useTranslation();
   return (
     <ScreenContainer edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.mascotWrap}>
@@ -54,10 +58,10 @@ export default function PeriodSetupScreen() {
       </View>
 
       <AppText variant="h1" center style={styles.title}>
-        Tell us about your cycle
+        {t('periodSetup.title')}
       </AppText>
       <AppText variant="bodyLarge" center color={Colors.textSecondary} style={styles.subtitle}>
-        A couple of quick questions so Yumi can personalise your experience.
+        {t('periodSetup.subtitle')}
       </AppText>
 
       <View style={styles.options}>
@@ -73,9 +77,9 @@ export default function PeriodSetupScreen() {
               style={styles.optionIcon}
             />
             <View style={{ flex: 1 }}>
-              <AppText variant="bodyMedium">{option.title}</AppText>
+              <AppText variant="bodyMedium">{t(option.title)}</AppText>
               <AppText variant="small" style={styles.optionSubtitle}>
-                {option.subtitle}
+                {t(option.subtitle)}
               </AppText>
             </View>
           </Pressable>
@@ -84,7 +88,7 @@ export default function PeriodSetupScreen() {
 
       <Pressable onPress={() => router.dismissTo('/(tabs)/home')} hitSlop={8} style={styles.skip}>
         <AppText variant="bodyMedium" color={Colors.textMuted}>
-          Skip for now
+          {t('periodSetup.skip')}
         </AppText>
       </Pressable>
     </ScreenContainer>

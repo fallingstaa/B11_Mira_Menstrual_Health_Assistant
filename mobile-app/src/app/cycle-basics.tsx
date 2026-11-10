@@ -11,6 +11,7 @@ import {
   View,
   type ScrollViewInstance,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   Easing,
   FadeIn,
@@ -26,6 +27,7 @@ import { AppText } from '@/components/yumi/app-text';
 import { Button } from '@/components/yumi/button';
 import { ProgressDots } from '@/components/yumi/progress-dots';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import i18n from '@/i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -45,36 +47,60 @@ type PhaseInfo = {
 const phases: PhaseInfo[] = [
   {
     key: 'menstrual',
-    label: 'Menstrual',
-    days: 'Days 1–5',
-    description: 'Bleeding days. Low energy, time to rest.',
+    get label() {
+      return i18n.t('cycleBasics.phases.menstrual.label');
+    },
+    get days() {
+      return i18n.t('cycleBasics.phases.menstrual.days');
+    },
+    get description() {
+      return i18n.t('cycleBasics.phases.menstrual.description');
+    },
     color: Colors.primary,
     tint: Colors.tint50,
     icon: 'moon-outline',
   },
   {
     key: 'follicular',
-    label: 'Follicular',
-    days: 'Days 6–13',
-    description: 'Bleeding stops! Energy bounces back.',
+    get label() {
+      return i18n.t('cycleBasics.phases.follicular.label');
+    },
+    get days() {
+      return i18n.t('cycleBasics.phases.follicular.days');
+    },
+    get description() {
+      return i18n.t('cycleBasics.phases.follicular.description');
+    },
     color: Colors.peach,
     tint: Colors.peachTint,
     icon: 'leaf-outline',
   },
   {
     key: 'ovulation',
-    label: 'Ovulation',
-    days: 'Around Day 14',
-    description: 'Peak energy! Body releases an egg.',
+    get label() {
+      return i18n.t('cycleBasics.phases.ovulation.label');
+    },
+    get days() {
+      return i18n.t('cycleBasics.phases.ovulation.days');
+    },
+    get description() {
+      return i18n.t('cycleBasics.phases.ovulation.description');
+    },
     color: Colors.teal,
     tint: Colors.tealTint,
     icon: 'sunny-outline',
   },
   {
     key: 'luteal',
-    label: 'Luteal',
-    days: 'Days 15–28',
-    description: 'Your next period is getting closer. Mood changes or cravings are normal.',
+    get label() {
+      return i18n.t('cycleBasics.phases.luteal.label');
+    },
+    get days() {
+      return i18n.t('cycleBasics.phases.luteal.days');
+    },
+    get description() {
+      return i18n.t('cycleBasics.phases.luteal.description');
+    },
     color: Colors.lavender,
     tint: Colors.lavenderTint,
     icon: 'partly-sunny-outline',
@@ -93,28 +119,50 @@ type CardMeta = {
 const cards: CardMeta[] = [
   {
     key: 'period',
-    title: 'Your Period',
-    body: "These are the days you're bleeding. A typical period lasts around 3–7 days.",
-    example: 'Example: Aug 1 → Aug 5 = 5 days',
+    get title() {
+      return i18n.t('cycleBasics.cards.period.title');
+    },
+    get body() {
+      return i18n.t('cycleBasics.cards.period.body');
+    },
+    get example() {
+      return i18n.t('cycleBasics.cards.period.example');
+    },
     illustration: <PeriodDurationIllustration />,
   },
   {
     key: 'cycle',
-    title: 'Your Cycle Length',
-    body: 'Your cycle starts on Day 1 of your period and ends when your next period starts. Most cycles are around 28 days, but everyone is different!',
-    example: 'Example: Aug 1 → Aug 29 = 28-day cycle',
+    get title() {
+      return i18n.t('cycleBasics.cards.cycle.title');
+    },
+    get body() {
+      return i18n.t('cycleBasics.cards.cycle.body');
+    },
+    get example() {
+      return i18n.t('cycleBasics.cards.cycle.example');
+    },
     illustration: <CycleLengthIllustration />,
   },
   {
     key: 'phases',
-    title: "Your Body's 4 Seasons",
-    body: 'Your body flows through 4 simple phases each month:',
+    get title() {
+      return i18n.t('cycleBasics.cards.phases.title');
+    },
+    get body() {
+      return i18n.t('cycleBasics.cards.phases.body');
+    },
   },
   {
     key: 'unknown',
-    title: "Don't Remember Your Past Dates?",
-    body: 'No problem! You can skip your past dates and start tracking from your next period.',
-    subtext: 'The more you track, the smarter Yumi gets!',
+    get title() {
+      return i18n.t('cycleBasics.cards.unknown.title');
+    },
+    get body() {
+      return i18n.t('cycleBasics.cards.unknown.body');
+    },
+    get subtext() {
+      return i18n.t('cycleBasics.cards.unknown.subtext');
+    },
     illustration: <AllSetIllustration />,
   },
 ];
@@ -134,6 +182,7 @@ const cards: CardMeta[] = [
 export default function CycleBasicsScreen() {
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const isReview = mode === 'review';
+  const { t } = useTranslation();
   const [index, setIndex] = useState(0);
   const scrollRef = useRef<ScrollViewInstance>(null);
   const isLast = index === cards.length - 1;
@@ -168,7 +217,7 @@ export default function CycleBasicsScreen() {
         {!isLast && (
           <Pressable onPress={finish} hitSlop={8}>
             <AppText variant="bodyMedium" color={Colors.textSecondary}>
-              {isReview ? 'Close' : 'Skip'}
+              {isReview ? t('common.close') : t('common.skip')}
             </AppText>
           </Pressable>
         )}
@@ -215,7 +264,7 @@ export default function CycleBasicsScreen() {
       <View style={styles.footer}>
         <ProgressDots count={cards.length} activeIndex={index} />
         <Button
-          label={isLast ? (isReview ? 'Done' : "Got It, Let's Go!") : 'Continue'}
+          label={isLast ? (isReview ? t('common.done') : t('cycleBasics.letsGo')) : t('common.continue')}
           onPress={() => (isLast ? finish() : goTo(index + 1))}
           style={styles.cta}
         />

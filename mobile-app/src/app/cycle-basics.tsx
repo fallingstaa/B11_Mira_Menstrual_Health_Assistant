@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   View,
+  type ScrollViewInstance,
 } from 'react-native';
 import Animated, {
   Easing,
@@ -134,7 +135,7 @@ export default function CycleBasicsScreen() {
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const isReview = mode === 'review';
   const [index, setIndex] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const isLast = index === cards.length - 1;
 
   const goTo = (i: number) => {

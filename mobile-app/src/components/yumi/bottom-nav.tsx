@@ -28,7 +28,7 @@ const ICONS: Record<string, { on: keyof typeof Ionicons.glyphMap; off: keyof typ
 };
 
 /** Custom floating bottom tab bar matching the Yumi design system. */
-export function BottomNav({ state, navigation }: BottomTabBarProps) {
+export function BottomNav({ state, emitter, navigateToTab }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -45,9 +45,9 @@ export function BottomNav({ state, navigation }: BottomTabBarProps) {
               icon={focused ? meta.on : meta.off}
               label={meta.label}
               onPress={() => {
-                const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+                const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
                 if (!focused && !event.defaultPrevented) {
-                  navigation.navigate(route.name);
+                  navigateToTab(route.key);
                 }
               }}
             />

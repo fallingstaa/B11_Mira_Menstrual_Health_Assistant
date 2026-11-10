@@ -4,13 +4,13 @@ import { router } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
 import { Alert, Image, Pressable, Share, StyleSheet, View } from 'react-native';
 
-import { AppText } from '@/components/mira/app-text';
-import { Card } from '@/components/mira/card';
-import { EditProfileModal } from '@/components/mira/edit-profile-modal';
-import { IconCircle } from '@/components/mira/icon-circle';
-import { LanguagePickerModal } from '@/components/mira/language-picker-modal';
-import { ScreenContainer } from '@/components/mira/screen-container';
-import { SettingsRow } from '@/components/mira/settings-row';
+import { AppText } from '@/components/yumi/app-text';
+import { Card } from '@/components/yumi/card';
+import { EditProfileModal } from '@/components/yumi/edit-profile-modal';
+import { IconCircle } from '@/components/yumi/icon-circle';
+import { LanguagePickerModal } from '@/components/yumi/language-picker-modal';
+import { ScreenContainer } from '@/components/yumi/screen-container';
+import { SettingsRow } from '@/components/yumi/settings-row';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useAvatarAuthHeader } from '@/hooks/use-avatar-header';
@@ -102,7 +102,7 @@ export default function ProfileScreen() {
     try {
       const data = await apiRequest('/profile/export');
       await Share.share({
-        title: `mira-export-${new Date().toISOString().slice(0, 10)}.json`,
+        title: `yumi-export-${new Date().toISOString().slice(0, 10)}.json`,
         message: JSON.stringify(data, null, 2),
       });
     } catch (err) {
@@ -312,7 +312,7 @@ export default function ProfileScreen() {
       </SectionCard>
 
       <SectionCard title="About" delay={140}>
-        <SettingsRow icon="heart-outline" label="About Mira" onPress={() => {}} />
+        <SettingsRow icon="heart-outline" label="About Yumi" onPress={() => {}} />
         <Divider />
         <SettingsRow icon="help-circle-outline" label="Help & support" onPress={() => {}} />
         <Divider />
@@ -325,7 +325,7 @@ export default function ProfileScreen() {
       </SectionCard>
 
       <AppText variant="caption" center style={styles.version}>
-        Mira v1.0.0 · Made with care for first-time menstruators
+        Yumi v1.0.0 · Made with care for first-time menstruators
       </AppText>
 
       {profile && (

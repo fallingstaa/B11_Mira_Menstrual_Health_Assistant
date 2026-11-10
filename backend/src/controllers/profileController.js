@@ -250,7 +250,7 @@ const exportData = asyncHandler(async (req, res) => {
     menstrualRecords: records,
   };
 
-  const filename = `mira-export-${new Date().toISOString().slice(0, 10)}.json`;
+  const filename = `yumi-export-${new Date().toISOString().slice(0, 10)}.json`;
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   return success(res, payload);
 });

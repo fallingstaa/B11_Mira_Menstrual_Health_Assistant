@@ -4,14 +4,14 @@ import { useCallback, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
-import { AppText } from '@/components/mira/app-text';
-import { BatchRecordModal } from '@/components/mira/batch-record-modal';
-import { Button } from '@/components/mira/button';
-import { Card } from '@/components/mira/card';
-import { Dot } from '@/components/mira/chip';
-import { PeriodDayEditor } from '@/components/mira/period-day-editor';
-import { PeriodEntriesSummary } from '@/components/mira/period-entries-summary';
-import { ScreenContainer } from '@/components/mira/screen-container';
+import { AppText } from '@/components/yumi/app-text';
+import { BatchRecordModal } from '@/components/yumi/batch-record-modal';
+import { Button } from '@/components/yumi/button';
+import { Card } from '@/components/yumi/card';
+import { Dot } from '@/components/yumi/chip';
+import { PeriodDayEditor } from '@/components/yumi/period-day-editor';
+import { PeriodEntriesSummary } from '@/components/yumi/period-entries-summary';
+import { ScreenContainer } from '@/components/yumi/screen-container';
 // pastPeriods is still this screen's placeholder "demo history" for a brand-new account with
 // nothing logged yet (see hasRealEntries below) — cycleStats is gone, see the prediction state
 // below for why.

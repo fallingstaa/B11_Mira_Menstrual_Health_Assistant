@@ -3,17 +3,17 @@ import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppText } from '@/components/mira/app-text';
-import { Button } from '@/components/mira/button';
-import { Mascot } from '@/components/mira/mascot';
-import { ScreenContainer } from '@/components/mira/screen-container';
+import { AppText } from '@/components/yumi/app-text';
+import { Button } from '@/components/yumi/button';
+import { Mascot } from '@/components/yumi/mascot';
+import { ScreenContainer } from '@/components/yumi/screen-container';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
 
 // Same icons as Home's Quick Actions, for consistency.
 const links: { key: string; icon: keyof typeof Ionicons.glyphMap; label: string; href: '/(tabs)/education' | '/(tabs)/assistant' | '/notifications' }[] = [
   { key: 'education', icon: 'book', label: 'Browse Education', href: '/(tabs)/education' },
-  { key: 'assistant', icon: 'chatbubble-ellipses', label: 'Ask Mira AI', href: '/(tabs)/assistant' },
+  { key: 'assistant', icon: 'chatbubble-ellipses', label: 'Ask Yumi AI', href: '/(tabs)/assistant' },
   { key: 'reminders', icon: 'alarm', label: 'Set Up Reminders', href: '/notifications' },
 ];
 
@@ -46,7 +46,7 @@ export default function LastPeriodUnknownScreen() {
         Start tracking from your next period.
       </AppText>
       <AppText variant="small" center color={Colors.textSecondary} style={styles.body}>
-        While you wait, you can browse Education, ask Mira anything, set up reminders, or just explore the app.
+        While you wait, you can browse Education, ask Yumi anything, set up reminders, or just explore the app.
       </AppText>
 
       <View style={styles.links}>

@@ -3,12 +3,12 @@ import { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
-import { AppText } from '@/components/mira/app-text';
-import { Button } from '@/components/mira/button';
-import { MascotMini } from '@/components/mira/mascot';
-import { ScreenContainer } from '@/components/mira/screen-container';
-import { SocialButton } from '@/components/mira/social-button';
-import { TextField } from '@/components/mira/text-field';
+import { AppText } from '@/components/yumi/app-text';
+import { Button } from '@/components/yumi/button';
+import { MascotMini } from '@/components/yumi/mascot';
+import { ScreenContainer } from '@/components/yumi/screen-container';
+import { SocialButton } from '@/components/yumi/social-button';
+import { TextField } from '@/components/yumi/text-field';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
 import { useAuth } from '@/context/auth-context';
@@ -125,7 +125,7 @@ export default function RegisterScreen() {
         />
 
         <AppText variant="small" color={Colors.textMuted} style={styles.terms}>
-          By continuing, you agree to Mira&apos;s Terms of Service and Privacy Policy. Your data always stays private.
+          By continuing, you agree to Yumi&apos;s Terms of Service and Privacy Policy. Your data always stays private.
         </AppText>
 
         <Button label="Create Account" onPress={handleRegister} loading={loading} style={styles.registerButton} />

@@ -17,7 +17,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      // The Mira splash route takes over from here with its own animated mascot.
+      // The Yumi splash route takes over from here with its own animated mascot.
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);

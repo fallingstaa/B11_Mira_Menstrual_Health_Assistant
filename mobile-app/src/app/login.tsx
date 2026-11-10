@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
-import { AppText } from '@/components/mira/app-text';
-import { Button } from '@/components/mira/button';
-import { MascotMini } from '@/components/mira/mascot';
-import { ScreenContainer } from '@/components/mira/screen-container';
-import { SocialButton } from '@/components/mira/social-button';
-import { TextField } from '@/components/mira/text-field';
+import { AppText } from '@/components/yumi/app-text';
+import { Button } from '@/components/yumi/button';
+import { MascotMini } from '@/components/yumi/mascot';
+import { ScreenContainer } from '@/components/yumi/screen-container';
+import { SocialButton } from '@/components/yumi/social-button';
+import { TextField } from '@/components/yumi/text-field';
 import { auth } from '@/config/firebase';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
@@ -129,7 +129,7 @@ export default function LoginScreen() {
 
       <View style={styles.footer}>
         <AppText variant="body" color={Colors.textSecondary}>
-          New to Mira?{' '}
+          New to Yumi?{' '}
         </AppText>
         <Link href="/register" replace>
           <AppText variant="bodyMedium" color={Colors.primary}>

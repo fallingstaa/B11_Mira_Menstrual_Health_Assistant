@@ -64,7 +64,7 @@ const login = asyncHandler(async (req, res) => {
       // decoded.name is only present if the Firebase account has a displayName set,
       // which our own register flow doesn't set — falls back to the email's local
       // part so the field is never blank; user can correct it via PUT /profile/me.
-      profile: { name: decoded.name || decoded.email?.split("@")[0] || "Mira User" },
+      profile: { name: decoded.name || decoded.email?.split("@")[0] || "Yumi User" },
     });
   }
 

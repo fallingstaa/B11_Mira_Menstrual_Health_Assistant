@@ -66,7 +66,7 @@ app.use("/api/education", educationRoutes);
 // Interactive API docs + machine-readable spec, generated from @openapi JSDoc blocks
 // in src/routes/*.js (see config/swagger.js). Use the "Authorize" button in the UI to
 // paste a Firebase ID token once and it's sent on every "Try it out" call.
-app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: "Mira API Docs" }));
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: "Yumi API Docs" }));
 app.get("/api/docs.json", (req, res) => res.json(swaggerSpec));
 
 // Dev-only test dashboard (public/test-ui) — a friendlier alternative to hand-typing
@@ -92,7 +92,7 @@ if (process.env.NODE_ENV !== "production") {
 
 app.get("/", (req, res) => {
     res.json({
-        message: "Mira Backend API is running"
+        message: "Yumi Backend API is running"
     });
 });
 

@@ -3,13 +3,13 @@ import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
-import { AppText } from '@/components/mira/app-text';
-import { Mascot } from '@/components/mira/mascot';
+import { AppText } from '@/components/yumi/app-text';
+import { Mascot } from '@/components/yumi/mascot';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 
 /**
- * Mira's animated splash screen — mascot fades/floats/waves in, then routes onward.
+ * Yumi's animated splash screen — mascot fades/floats/waves in, then routes onward.
  *
  * AUTH-008: this used to route to /onboarding unconditionally, regardless of Firebase's own
  * persisted session — so a returning, already-logged-in user was sent through onboarding and
@@ -37,7 +37,7 @@ export default function SplashRoute() {
 
       <Animated.View entering={FadeInDown.duration(500).delay(350)}>
         <AppText variant="display" center style={{ color: Colors.primary }}>
-          Mira
+          Yumi
         </AppText>
       </Animated.View>
 

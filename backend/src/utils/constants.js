@@ -7,7 +7,7 @@ module.exports = {
   MENSTRUAL_RECORD_SOURCES: ["calendar", "checkin", "record", "record_first_period", "last_period_one_date"],
   NOTIFICATION_TYPES: ["period", "record", "checkin", "education"],
   // Mirrors MIN_CYCLE_LENGTH/MAX_CYCLE_LENGTH in
-  // mobile-app/src/components/mira/cycle-length-question.tsx — the shared "do you know
+  // mobile-app/src/components/yumi/cycle-length-question.tsx — the shared "do you know
   // your cycle length" stepper used by both onboarding paths that ask for it.
   MIN_MANUAL_CYCLE_LENGTH: 21,
   MAX_MANUAL_CYCLE_LENGTH: 45,

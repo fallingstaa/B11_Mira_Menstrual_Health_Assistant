@@ -4,10 +4,10 @@ import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
-import { AppText } from '@/components/mira/app-text';
-import { IconCircle } from '@/components/mira/icon-circle';
-import { ScreenContainer } from '@/components/mira/screen-container';
-import { ScreenHeader } from '@/components/mira/screen-header';
+import { AppText } from '@/components/yumi/app-text';
+import { IconCircle } from '@/components/yumi/icon-circle';
+import { ScreenContainer } from '@/components/yumi/screen-container';
+import { ScreenHeader } from '@/components/yumi/screen-header';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { apiRequest } from '@/utils/api';
 import { addDays, formatShort, isSameDay } from '@/utils/date';

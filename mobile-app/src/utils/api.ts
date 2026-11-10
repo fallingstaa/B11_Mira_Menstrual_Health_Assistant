@@ -39,7 +39,7 @@ type RequestOptions = {
 };
 
 /**
- * Thin fetch wrapper around Mira's backend. Always requests a *fresh* ID token from
+ * Thin fetch wrapper around Yumi's backend. Always requests a *fresh* ID token from
  * the Firebase SDK rather than caching one — tokens expire hourly and the SDK
  * auto-refreshes them under the hood, so asking fresh every time avoids ever sending
  * a stale one. Every response is expected to follow the backend's

@@ -4,12 +4,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppText } from '@/components/mira/app-text';
-import { Card } from '@/components/mira/card';
-import { CycleRecapModal, RecapCycle } from '@/components/mira/cycle-recap-modal';
-import { IconCircle } from '@/components/mira/icon-circle';
-import { ScreenContainer } from '@/components/mira/screen-container';
-import { ScreenHeader } from '@/components/mira/screen-header';
+import { AppText } from '@/components/yumi/app-text';
+import { Card } from '@/components/yumi/card';
+import { CycleRecapModal, RecapCycle } from '@/components/yumi/cycle-recap-modal';
+import { IconCircle } from '@/components/yumi/icon-circle';
+import { ScreenContainer } from '@/components/yumi/screen-container';
+import { ScreenHeader } from '@/components/yumi/screen-header';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { getPeriodStreaks, useAppState } from '@/context/app-state';
 import { apiRequest } from '@/utils/api';

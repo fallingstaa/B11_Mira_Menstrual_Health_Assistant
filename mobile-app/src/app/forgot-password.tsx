@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
 
-import { AppText } from '@/components/mira/app-text';
-import { Button } from '@/components/mira/button';
-import { IconCircle } from '@/components/mira/icon-circle';
-import { ScreenContainer } from '@/components/mira/screen-container';
-import { ScreenHeader } from '@/components/mira/screen-header';
-import { TextField } from '@/components/mira/text-field';
+import { AppText } from '@/components/yumi/app-text';
+import { Button } from '@/components/yumi/button';
+import { IconCircle } from '@/components/yumi/icon-circle';
+import { ScreenContainer } from '@/components/yumi/screen-container';
+import { ScreenHeader } from '@/components/yumi/screen-header';
+import { TextField } from '@/components/yumi/text-field';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 

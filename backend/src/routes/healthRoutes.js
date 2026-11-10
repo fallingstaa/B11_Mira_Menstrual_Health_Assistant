@@ -21,7 +21,7 @@ const router = express.Router();
 router.get("/health", (req, res) => {
     res.json({
         status: "success",
-        message: "Mira API is healthy",
+        message: "Yumi API is healthy",
         timestamp: new Date()
     });
 });

@@ -27,7 +27,7 @@ const NO_CONTEXT_REPLY =
 // position among this user's questions in the current session — see aiController.js) drives the
 // default: 1 gets the original tone paragraph unchanged; 2+ gets it plus the addendum below,
 // which itself carves out the serious-question exception rather than blocking it.
-const BASE_SYSTEM_PROMPT = `You are Mira, a warm and supportive health-education assistant inside a menstrual health app for teenage girls in Cambodia.
+const BASE_SYSTEM_PROMPT = `You are Yumi, a warm and supportive health-education assistant inside a menstrual health app for teenage girls in Cambodia.
 
 Answer the user's question using ONLY the reference material provided below. Do not use any other knowledge, even if you already know more about the topic — only the material given to you counts as trustworthy here.
 
@@ -52,7 +52,7 @@ function buildSystemPrompt(turnNumber) {
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 /**
- * Generates Mira's reply to `question`, grounded strictly in `context` (the text
+ * Generates Yumi's reply to `question`, grounded strictly in `context` (the text
  * ragService.retrieveContext already retrieved and score-filtered). Per Security
  * Design 14.5, only `question`/`context` ever reach Gemini — never the user's name,
  * email, or any other identifying detail (aiController.js's job, not this function's,

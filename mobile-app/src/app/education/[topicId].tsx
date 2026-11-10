@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { Platform, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/yumi/app-text';
@@ -18,17 +19,17 @@ import { IconCircle } from '@/components/yumi/icon-circle';
 import { ScreenContainer } from '@/components/yumi/screen-container';
 import { ScreenHeader } from '@/components/yumi/screen-header';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
-import { educationTopics, getEducationTopic, Section, Topic } from '@/constants/education-hub';
+import { getEducationTopic, getEducationTopics, Section, Topic } from '@/constants/education-hub';
 
 // Yumi Drop's opening line for each topic — friendly, no medical claims.
-const GREETINGS: Record<string, string> = {
-  'first-period': "Hi, I'm Yumi Drop! Drag the timeline and tap the cards. I'll be right here.",
-  'understanding-your-cycle': "Hi, I'm Yumi Drop! Tap a phase and watch the wheel spin.",
-  'period-hygiene': "Hi, I'm Yumi Drop! Let's pack a school kit together.",
-  'period-symptoms': "Hi, I'm Yumi Drop! Pick a symptom to see what's going on.",
-  'myths-and-facts': "Hi, I'm Yumi Drop! Ready to bust some myths? Swipe the cards!",
-  'when-to-ask-for-help': "Hi, I'm Yumi Drop! Tap a light. Asking for help is always okay.",
-};
+const GREETING_KEYS = {
+  'first-period': 'education.greetings.firstPeriod',
+  'understanding-your-cycle': 'education.greetings.cycle',
+  'period-hygiene': 'education.greetings.hygiene',
+  'period-symptoms': 'education.greetings.symptoms',
+  'myths-and-facts': 'education.greetings.myths',
+  'when-to-ask-for-help': 'education.greetings.help',
+} as const;
 
 /** The one interactive widget that opens each topic. */
 function Activity({ topic }: { topic: Topic }) {
@@ -52,15 +53,18 @@ function Activity({ topic }: { topic: Topic }) {
 
 export default function EducationTopicScreen() {
   const { topicId } = useLocalSearchParams<{ topicId: string }>();
+  const { t } = useTranslation();
+  const educationTopics = getEducationTopics();
   const topic = getEducationTopic(topicId) ?? educationTopics[0];
   const number = educationTopics.indexOf(topic) + 1;
+  const greetingKey = GREETING_KEYS[topic.id as keyof typeof GREETING_KEYS] ?? 'education.greetings.default';
 
   return (
-    <YumiProvider greeting={GREETINGS[topic.id] ?? "Hi, I'm Yumi Drop!"}>
+    <YumiProvider greeting={t(greetingKey)}>
       {/* Pinned outside the scroll area, so the back button is always reachable — even at the very end of a long topic. */}
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.headerSafe}>
         <View style={styles.headerInner}>
-          <ScreenHeader title="Education Hub" />
+          <ScreenHeader title={t('education.hubTitle')} />
         </View>
       </SafeAreaView>
 
@@ -71,7 +75,7 @@ export default function EducationTopicScreen() {
           </IconCircle>
           <View style={styles.heroText}>
             <AppText variant="caption" color={topic.color}>
-              TOPIC {number} OF {educationTopics.length}
+              {t('education.topicOf', { n: number, total: educationTopics.length })}
             </AppText>
             <AppText variant="h1">{topic.title}</AppText>
           </View>
@@ -83,7 +87,7 @@ export default function EducationTopicScreen() {
         {topic.sections.length > 0 ? (
           <View style={styles.details}>
             <AppText variant="h3" style={styles.detailsTitle}>
-              Full details
+              {t('education.fullDetails')}
             </AppText>
             {topic.sections.map((section, i) => (
               <EducationAccordion key={section.id} title={section.title} icon={section.icon} color={topic.color} tint={topic.tint} delay={i * 60}>
@@ -94,7 +98,7 @@ export default function EducationTopicScreen() {
         ) : null}
 
         <AppText variant="h3" style={styles.sourcesTitle}>
-          Sources &amp; Citations
+          {t('education.sources')}
         </AppText>
         <EducationSources sources={topic.sources} color={topic.color} />
       </ScreenContainer>

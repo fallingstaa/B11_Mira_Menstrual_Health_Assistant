@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -14,37 +15,37 @@ import { AppText } from '@/components/yumi/app-text';
 import { useYumi } from '@/components/yumi/education/yumi-companion';
 import {
   LightLevel,
-  TRAFFIC_LIGHTS,
-  TRAFFIC_LIGHT_EMERGENCY,
-  TRAFFIC_LIGHT_FOOTER,
+  getActivities,
 } from '@/constants/education-activities';
 import { Colors, Radius, Shadow, Spacing } from '@/constants/theme';
 
 // Yumi's line for each light — gentle and non-diagnostic; the guidance itself is the source text.
-const YUMI_LINES: Record<LightLevel['id'], string> = {
-  green: 'Lots of what your body does is completely normal.',
-  yellow: 'Keeping track is a great habit. It helps you notice patterns.',
-  red: 'Asking a doctor for help is always okay. Nobody will judge you.',
-};
+const YUMI_LINES = {
+  green: 'education.trafficLight.sayGreen',
+  yellow: 'education.trafficLight.sayYellow',
+  red: 'education.trafficLight.sayRed',
+} as const;
 
 /** Topic 6: tap Green / Yellow / Red to see which signs fit where and what to do about them. */
 export function TrafficLight() {
   const say = useYumi();
+  const { t } = useTranslation();
+  const { TRAFFIC_LIGHTS, TRAFFIC_LIGHT_EMERGENCY, TRAFFIC_LIGHT_FOOTER } = getActivities();
   const [open, setOpen] = useState<LightLevel['id'] | null>(null);
 
   const choose = (id: LightLevel['id']) => {
     const next = open === id ? null : id;
     setOpen(next);
-    if (next) say(YUMI_LINES[next]);
+    if (next) say(t(YUMI_LINES[next]));
   };
 
   const active = TRAFFIC_LIGHTS.find((l) => l.id === open);
 
   return (
     <View>
-      <AppText variant="h3">Traffic light checker</AppText>
+      <AppText variant="h3">{t('education.trafficLight.title')}</AppText>
       <AppText variant="small" style={styles.hint}>
-        Tap a light to see what fits where.
+        {t('education.trafficLight.hint')}
       </AppText>
 
       <View style={styles.lights}>
@@ -90,7 +91,7 @@ export function TrafficLight() {
       ) : (
         <View style={styles.idle}>
           <Ionicons name="hand-left-outline" size={20} color={Colors.textMuted} />
-          <AppText variant="small">Pick a light above.</AppText>
+          <AppText variant="small">{t('education.trafficLight.pick')}</AppText>
         </View>
       )}
     </View>
@@ -129,11 +130,12 @@ function Light({ level, active, dimmed, onPress }: { level: LightLevel; active: 
 
 /** A prominent "talk to a doctor" banner shown at the top of the red panel. */
 function DoctorPrompt() {
+  const { t } = useTranslation();
   return (
     <View style={styles.doctor}>
       <Ionicons name="medkit" size={22} color="#FFFFFF" />
       <AppText variant="bodyMedium" color="#FFFFFF" style={styles.flex}>
-        If any of these sound like you, talk to a doctor.
+        {t('education.trafficLight.doctor')}
       </AppText>
     </View>
   );

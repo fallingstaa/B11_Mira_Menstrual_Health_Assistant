@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Card } from '@/components/yumi/card';
@@ -11,9 +12,10 @@ type Props = { topic: Topic; number: number; delay?: number; onPress: () => void
 
 /** One of the six Education Hub topics on the hub screen. */
 export function EducationTopicCard({ topic, number, delay = 0, onPress }: Props) {
+  const { t } = useTranslation();
   // Teaser = the topic's own section titles (or "N myths to bust"), so nothing here is new copy.
   const teaser = topic.myths
-    ? `${topic.myths.length} myths to bust`
+    ? t('education.mythsToBust', { n: topic.myths.length })
     : topic.sections.map((s) => s.title).join(' · ');
 
   return (
@@ -24,7 +26,7 @@ export function EducationTopicCard({ topic, number, delay = 0, onPress }: Props)
         </IconCircle>
         <View style={styles.textWrap}>
           <AppText variant="caption" color={topic.color}>
-            TOPIC {number}
+            {t('education.topicNumber', { n: number })}
           </AppText>
           <AppText variant="h3" style={styles.title}>
             {topic.title}

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/yumi/button';
 import { Card } from '@/components/yumi/card';
@@ -30,6 +31,7 @@ import { dateKey, formatShort } from '@/utils/date';
  */
 export default function CheckinScreen() {
   const { periodEntries, updatePeriodDayEntry, commitDays } = useAppState();
+  const { t } = useTranslation();
   const [today] = useState(() => new Date());
   const existingEntry = periodEntries[dateKey(today)];
 
@@ -48,8 +50,8 @@ export default function CheckinScreen() {
 
   useEffect(() => {
     if (!saved) return;
-    const t = setTimeout(() => router.back(), 1100);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => router.back(), 1100);
+    return () => clearTimeout(timer);
   }, [saved]);
 
   // Waits for the server to actually accept the save before showing "Check-in saved!" — see
@@ -65,7 +67,7 @@ export default function CheckinScreen() {
         'checkin',
       );
     } catch (err) {
-      Alert.alert("Couldn't save", err instanceof Error ? err.message : 'Please try again.');
+      Alert.alert(t('common.couldntSave'), err instanceof Error ? err.message : t('common.tryAgain'));
       return;
     } finally {
       setSaving(false);
@@ -84,23 +86,23 @@ export default function CheckinScreen() {
       edges={['top', 'left', 'right', 'bottom']}
       footer={
         <Button
-          label="Save Check-in"
+          label={t('checkin.save')}
           icon={<Ionicons name="checkmark-circle-outline" size={16} color={Colors.textOnPrimary} />}
           onPress={handleSave}
           loading={saving}
         />
       }>
-      <ModalHeader title="Daily Check-in" subtitle={`Today, ${formatShort(today)} · takes a few seconds`} />
+      <ModalHeader title={t('checkin.title')} subtitle={t('checkin.subtitle', { date: formatShort(today) })} />
 
       <Card style={styles.card}>
-        <CollapsibleChipField label="Symptoms" options={symptomOptions} selectedKeys={symptoms} onToggle={toggleSymptom} />
+        <CollapsibleChipField label={t('record.symptoms')} options={symptomOptions} selectedKeys={symptoms} onToggle={toggleSymptom} />
       </Card>
 
       <Card style={styles.card}>
-        <CollapsibleChipField label="Mood" options={moodOptions} selectedKeys={mood} onToggle={toggleMood} />
+        <CollapsibleChipField label={t('record.mood')} options={moodOptions} selectedKeys={mood} onToggle={toggleMood} />
       </Card>
 
-      {saved && <SuccessOverlay message="Check-in saved!" />}
+      {saved && <SuccessOverlay message={t('checkin.saved')} />}
     </ScreenContainer>
   );
 }

@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { PanResponder, Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, { FadeInUp, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { AppText } from '@/components/yumi/app-text';
 import { HeartBurst, useYumi } from '@/components/yumi/education/yumi-companion';
 import { IconCircle } from '@/components/yumi/icon-circle';
-import { LEAK_CARD, PUBERTY_MILESTONES, PUBERTY_TIMELINE as T } from '@/constants/education-activities';
+import { getActivities, PUBERTY_TIMELINE as T } from '@/constants/education-activities';
 import { Colors, Radius, Shadow, Spacing } from '@/constants/theme';
 
 const FIRST_AGE = T.ages[0];
@@ -16,9 +17,11 @@ const MARKER = 34;
 
 /** Which of the source's three stated ranges the chosen age falls in. */
 function rangeFor(age: number) {
-  if (age >= T.typical.from && age <= T.typical.to) return { label: 'Most common', color: Colors.primary, tint: Colors.tint100 };
-  if (age >= T.normal.from && age <= T.normal.to) return { label: 'Clinically normal', color: Colors.lavender, tint: Colors.lavenderTint };
-  return { label: 'Broader normal range', color: Colors.teal, tint: Colors.tealTint };
+  if (age >= T.typical.from && age <= T.typical.to)
+    return { label: 'education.firstPeriod.mostCommon', color: Colors.primary, tint: Colors.tint100 } as const;
+  if (age >= T.normal.from && age <= T.normal.to)
+    return { label: 'education.firstPeriod.clinicallyNormal', color: Colors.lavender, tint: Colors.lavenderTint } as const;
+  return { label: 'education.firstPeriod.broaderNormal', color: Colors.teal, tint: Colors.tealTint } as const;
 }
 
 /** Topic 1: draggable age timeline (8–17), tap-to-pop milestone cards, and the leak-at-school card. */
@@ -34,6 +37,8 @@ export function FirstPeriodActivity() {
 
 function PubertyTimeline() {
   const say = useYumi();
+  const { t } = useTranslation();
+  const { PUBERTY_TIMELINE: timeline } = getActivities();
   const [age, setAge] = useState(12);
   const [width, setWidth] = useState(0);
   const trackWidth = Math.max(width - MARKER, 1);
@@ -84,22 +89,22 @@ function PubertyTimeline() {
   useEffect(() => {
     if (lastRange.current !== range.label) {
       lastRange.current = range.label;
-      say(`Age ${age}: ${range.label.toLowerCase()}. Everybody's timeline is a little different.`);
+      say(t('education.firstPeriod.sayAge', { age, range: t(range.label).toLowerCase() }));
     }
-  }, [range.label, age, say]);
+  }, [range.label, age, say, t]);
 
   return (
     <View style={styles.card}>
       <View style={styles.rowBetween}>
-        <AppText variant="h3">Puberty timeline</AppText>
+        <AppText variant="h3">{t('education.firstPeriod.timeline')}</AppText>
         <View style={[styles.pill, { backgroundColor: range.tint }]}>
           <AppText variant="caption" color={range.color}>
-            {range.label.toUpperCase()}
+            {t(range.label).toUpperCase()}
           </AppText>
         </View>
       </View>
       <AppText variant="small" style={styles.hint}>
-        Drag the drop, or tap an age.
+        {t('education.firstPeriod.dragHint')}
       </AppText>
 
       <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} style={styles.trackArea}>
@@ -116,7 +121,7 @@ function PubertyTimeline() {
 
         <View style={styles.ticks}>
           {T.ages.map((a) => (
-            <Pressable key={a} onPress={() => setAge(a)} hitSlop={6} style={styles.tick} accessibilityLabel={`Age ${a}`}>
+            <Pressable key={a} onPress={() => setAge(a)} hitSlop={6} style={styles.tick} accessibilityLabel={t('education.firstPeriod.age', { age: a })}>
               <AppText variant="caption" color={a === age ? Colors.primary : Colors.textMuted}>
                 {a}
               </AppText>
@@ -127,10 +132,10 @@ function PubertyTimeline() {
 
       <View style={[styles.result, { backgroundColor: range.tint }]}>
         <AppText variant="bodyMedium" color={range.color}>
-          At age {age}
+          {t('education.firstPeriod.atAge', { age })}
         </AppText>
         <AppText variant="body" style={styles.text}>
-          {T.menarche} {T.range}
+          {timeline.menarche} {timeline.range}
         </AppText>
       </View>
 
@@ -154,6 +159,8 @@ function Legend({ color, label }: { color: string; label: string }) {
 
 function MilestoneCards() {
   const say = useYumi();
+  const { t } = useTranslation();
+  const { PUBERTY_MILESTONES } = getActivities();
   const [open, setOpen] = useState<Set<string>>(new Set());
 
   const toggle = (id: string, title: string) => {
@@ -164,13 +171,13 @@ function MilestoneCards() {
       else next.delete(id);
       return next;
     });
-    if (opening) say(`${title}. You're learning your own body's story.`);
+    if (opening) say(t('education.firstPeriod.sayMilestone', { title }));
   };
 
   return (
     <View>
       <AppText variant="h3" style={styles.sectionTitle}>
-        Your body&apos;s milestones
+        {t('education.firstPeriod.milestones')}
       </AppText>
       {PUBERTY_MILESTONES.map((m, i) => {
         const isOpen = open.has(m.id);
@@ -215,6 +222,8 @@ function MilestoneCards() {
 
 function LeakCard() {
   const say = useYumi();
+  const { t } = useTranslation();
+  const { LEAK_CARD } = getActivities();
   const [revealed, setRevealed] = useState(false);
   const [burst, setBurst] = useState(0);
 
@@ -222,7 +231,7 @@ function LeakCard() {
     if (!revealed) {
       setRevealed(true);
       setBurst((n) => n + 1);
-      say(`You've got this. It happens to almost everyone.`, 'cheer');
+      say(t('education.firstPeriod.sayLeak'), 'cheer');
     } else {
       setRevealed(false);
     }
@@ -236,7 +245,7 @@ function LeakCard() {
         </IconCircle>
         <View style={styles.flex}>
           <AppText variant="h3">{LEAK_CARD.title}</AppText>
-          <AppText variant="small">{revealed ? 'Tap to close' : 'Tap to reveal'}</AppText>
+          <AppText variant="small">{revealed ? t('education.tapToClose') : t('education.tapToReveal')}</AppText>
         </View>
         <Ionicons name={revealed ? 'heart' : 'heart-outline'} size={26} color={Colors.primary} />
       </Pressable>

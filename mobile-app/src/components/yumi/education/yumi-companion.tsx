@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -29,11 +30,11 @@ export function useYumi(): Say {
 
 // Warm, general reassurance for when she's tapped — encouragement only, no medical claims.
 const IDLE_LINES = [
-  'Every question you ask about your body is a good one.',
-  'You are doing great by learning this.',
-  'There is nothing to be embarrassed about here.',
-  'Take your time. There is no rush.',
-];
+  'education.idle.l1',
+  'education.idle.l2',
+  'education.idle.l3',
+  'education.idle.l4',
+] as const;
 
 type Props = { greeting: string; children: ReactNode };
 
@@ -43,6 +44,7 @@ type Props = { greeting: string; children: ReactNode };
  * everything except her own body.
  */
 export function YumiProvider({ greeting, children }: Props) {
+  const { t } = useTranslation();
   const [line, setLine] = useState({ message: greeting, mood: 'happy' as Mood, tick: 1 });
   const [idleIndex, setIdleIndex] = useState(0);
 
@@ -51,7 +53,7 @@ export function YumiProvider({ greeting, children }: Props) {
   }, []);
 
   const onTap = () => {
-    say(IDLE_LINES[idleIndex % IDLE_LINES.length], 'cheer');
+    say(t(IDLE_LINES[idleIndex % IDLE_LINES.length]), 'cheer');
     setIdleIndex((i) => i + 1);
   };
 
@@ -87,7 +89,7 @@ export function YumiProvider({ greeting, children }: Props) {
               {line.message}
             </AppText>
           </Animated.View>
-          <Pressable onPress={onTap} accessibilityRole="button" accessibilityLabel="Yumi Drop, tap for a kind word">
+          <Pressable onPress={onTap} accessibilityRole="button" accessibilityLabel={t('education.companionLabel')}>
             <Animated.View style={mascotStyle}>
               <Mascot size={64} waving={false} mood={line.mood === 'cheer' ? 'wink' : 'happy'} />
             </Animated.View>

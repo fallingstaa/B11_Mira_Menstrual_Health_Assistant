@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   FadeIn,
   ZoomIn,
@@ -14,15 +15,15 @@ import { AppText } from '@/components/yumi/app-text';
 import { FlipCard } from '@/components/yumi/education/flip-card';
 import { HeartBurst, useYumi } from '@/components/yumi/education/yumi-companion';
 import { IconCircle } from '@/components/yumi/icon-circle';
-import { KIT_ITEMS, PRODUCT_COMPARE, TSS_WARNING } from '@/constants/education-activities';
+import { getActivities } from '@/constants/education-activities';
 import { Colors, Radius, Shadow, Spacing } from '@/constants/theme';
 
 // Yumi's reactions to each thing you pack — encouragement only, the facts come from the source text.
-const PACK_CHEERS: Record<string, string> = {
-  pads: 'Extra pads packed! Future you says thanks.',
-  bag: 'A bag for tidy disposal. Smart!',
-  underwear: 'Spare underwear, always a good idea.',
-  cotton: 'Cosy and comfy. Nice pick!',
+const PACK_CHEERS: Record<string, 'education.hygiene.cheers.pads' | 'education.hygiene.cheers.bag' | 'education.hygiene.cheers.underwear' | 'education.hygiene.cheers.cotton'> = {
+  pads: 'education.hygiene.cheers.pads',
+  bag: 'education.hygiene.cheers.bag',
+  underwear: 'education.hygiene.cheers.underwear',
+  cotton: 'education.hygiene.cheers.cotton',
 };
 
 /** Topic 3: pack-your-school-kit game, plus flip cards for product choice and TSS safety. */
@@ -38,6 +39,8 @@ export function HygieneActivity() {
 
 function KitGame() {
   const say = useYumi();
+  const { t } = useTranslation();
+  const { KIT_ITEMS } = getActivities();
   const [packed, setPacked] = useState<Set<string>>(new Set());
   const [lastTapped, setLastTapped] = useState<string | null>(null);
   const [burst, setBurst] = useState(0);
@@ -53,9 +56,9 @@ function KitGame() {
 
     if (adding && next.size === KIT_ITEMS.length) {
       setBurst((n) => n + 1);
-      say('Your school kit is ready! You are so prepared.', 'cheer');
+      say(t('education.hygiene.sayReady'), 'cheer');
     } else if (adding) {
-      say(PACK_CHEERS[id], 'cheer');
+      say(t(PACK_CHEERS[id]), 'cheer');
     }
   };
 
@@ -63,9 +66,9 @@ function KitGame() {
 
   return (
     <View style={styles.card}>
-      <AppText variant="h3">Pack your school kit</AppText>
+      <AppText variant="h3">{t('education.hygiene.kitTitle')}</AppText>
       <AppText variant="small" style={styles.hint}>
-        Tap each item to put it in your pouch.
+        {t('education.hygiene.kitHint')}
       </AppText>
 
       <View style={styles.grid}>
@@ -78,10 +81,10 @@ function KitGame() {
         <View style={styles.pouchHead}>
           <Ionicons name={done ? 'checkmark-circle' : 'bag-handle'} size={22} color={done ? Colors.success : Colors.primary} />
           <AppText variant="bodyMedium" style={styles.flex}>
-            {done ? 'Kit packed!' : 'Your pouch'}
+            {done ? t('education.hygiene.packed') : t('education.hygiene.pouch')}
           </AppText>
           <AppText variant="caption">
-            {packed.size} of {KIT_ITEMS.length}
+            {t('home.stepsProgress', { done: packed.size, total: KIT_ITEMS.length })}
           </AppText>
         </View>
         <View style={styles.pouchItems}>
@@ -92,7 +95,7 @@ function KitGame() {
           ))}
           {packed.size === 0 ? (
             <AppText variant="small" color={Colors.textMuted}>
-              Empty for now
+              {t('education.hygiene.empty')}
             </AppText>
           ) : null}
         </View>
@@ -143,6 +146,8 @@ function KitTile({ label, icon, packed, onPress }: { label: string; icon: keyof 
 
 function ProductFlip() {
   const say = useYumi();
+  const { t } = useTranslation();
+  const { PRODUCT_COMPARE } = getActivities();
   const [flipped, setFlipped] = useState(false);
 
   return (
@@ -150,7 +155,7 @@ function ProductFlip() {
       height={400}
       flipped={flipped}
       onFlip={() => {
-        if (!flipped) say('There is no single right choice. Comfort comes first.');
+        if (!flipped) say(t('education.hygiene.sayProduct'));
         setFlipped((f) => !f);
       }}
       frontColor={Colors.tealTint}
@@ -165,7 +170,7 @@ function ProductFlip() {
             {PRODUCT_COMPARE.title}
           </AppText>
           <AppText variant="small" center>
-            Tap to flip
+            {t('education.tapToFlip')}
           </AppText>
         </>
       }
@@ -187,6 +192,8 @@ function ProductFlip() {
 
 function TssFlip() {
   const say = useYumi();
+  const { t } = useTranslation();
+  const { TSS_WARNING } = getActivities();
   const [flipped, setFlipped] = useState(false);
 
   return (
@@ -194,7 +201,7 @@ function TssFlip() {
       height={400}
       flipped={flipped}
       onFlip={() => {
-        if (!flipped) say('TSS is rare, and knowing the signs keeps you safe.');
+        if (!flipped) say(t('education.hygiene.sayTss'));
         setFlipped((f) => !f);
       }}
       frontColor={Colors.warningTint}
@@ -209,7 +216,7 @@ function TssFlip() {
             {TSS_WARNING.title}
           </AppText>
           <AppText variant="small" center>
-            Tap to flip
+            {t('education.tapToFlip')}
           </AppText>
         </>
       }

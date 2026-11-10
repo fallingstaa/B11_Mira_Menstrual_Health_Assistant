@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
 import { AppText } from '@/components/yumi/app-text';
@@ -28,6 +29,7 @@ type CheckinRecord = { date: string; isPeriodDay: boolean; symptoms: string[]; m
  * once, not duplicated here.
  */
 export default function CheckinHistoryScreen() {
+  const { t } = useTranslation();
   const [checkins, setCheckins] = useState<CheckinRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,7 +58,7 @@ export default function CheckinHistoryScreen() {
 
   return (
     <ScreenContainer edges={['top', 'left', 'right']}>
-      <ScreenHeader title="Check-in History" subtitle="Everything you've logged, day by day" />
+      <ScreenHeader title={t('checkinHistory.title')} subtitle={t('checkinHistory.subtitle')} />
 
       {!loading && checkins.length === 0 && (
         <View style={styles.emptyWrap}>
@@ -64,10 +66,10 @@ export default function CheckinHistoryScreen() {
             <Ionicons name="heart-outline" size={24} color={Colors.peach} />
           </IconCircle>
           <AppText variant="bodyMedium" color={Colors.textSecondary} style={{ marginTop: Spacing.md }}>
-            No check-ins yet
+            {t('checkinHistory.emptyTitle')}
           </AppText>
           <AppText variant="small" color={Colors.textMuted} center style={{ marginTop: 4 }}>
-            Tap &quot;Check in now&quot; on Home any day to log how you&apos;re feeling — it&apos;ll show up here.
+            {t('checkinHistory.emptyBody')}
           </AppText>
         </View>
       )}
@@ -85,12 +87,12 @@ export default function CheckinHistoryScreen() {
                 </AppText>
                 {entry.symptoms.length > 0 && (
                   <AppText variant="small" color={Colors.textMuted} numberOfLines={2} style={styles.rowDetail}>
-                    Symptoms: {entry.symptoms.map(symptomLabel).join(', ')}
+                    {t('checkinHistory.symptomsLine', { list: entry.symptoms.map(symptomLabel).join(', ') })}
                   </AppText>
                 )}
                 {entry.mood.length > 0 && (
                   <AppText variant="small" color={Colors.textMuted} numberOfLines={2} style={styles.rowDetail}>
-                    Mood: {entry.mood.map(moodLabel).join(', ')}
+                    {t('checkinHistory.moodLine', { list: entry.mood.map(moodLabel).join(', ') })}
                   </AppText>
                 )}
                 {entry.notes ? (

@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, TextInput, TextInputProps, View } from 'react-na
 
 import { AppText } from '@/components/yumi/app-text';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { useLocalizedTextStyle } from '@/i18n/fonts';
 
 type Props = TextInputProps & {
   label: string;
@@ -16,6 +17,7 @@ type Props = TextInputProps & {
 export function TextField({ label, icon, isPassword, error, ...rest }: Props) {
   const [secure, setSecure] = useState(!!isPassword);
   const [focused, setFocused] = useState(false);
+  const inputStyle = useLocalizedTextStyle(styles.input);
 
   return (
     <View style={styles.wrap}>
@@ -25,7 +27,7 @@ export function TextField({ label, icon, isPassword, error, ...rest }: Props) {
       <View style={[styles.field, focused && styles.fieldFocused, error && styles.fieldError]}>
         {icon ? <Ionicons name={icon} size={18} color={Colors.textMuted} style={styles.icon} /> : null}
         <TextInput
-          style={styles.input}
+          style={inputStyle}
           placeholderTextColor={Colors.textMuted}
           secureTextEntry={secure}
           onFocus={() => setFocused(true)}

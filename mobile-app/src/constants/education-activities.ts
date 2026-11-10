@@ -1,5 +1,7 @@
+import { educationActivitiesKm } from '@/constants/education-activities.km';
+import { educationTopics, educationTopicsKhmer, type IconName, type MythItem } from '@/constants/education-hub';
 import { Colors } from '@/constants/theme';
-import { educationTopics, type IconName } from '@/constants/education-hub';
+import i18n from '@/i18n';
 
 /**
  * Data behind each topic's interactive activity. Like education-hub.ts, every educational sentence
@@ -210,43 +212,35 @@ export type MythCard = {
 
 
 // The four myths and their full fact explanations live in education-hub.ts (Topic 5) — read from
-// there so the text exists in exactly one place.
-const mythsTopic = educationTopics.find((t) => t.id === 'myths-and-facts');
-const [{ myth: MYTH_1, fact: FACT_1 }, { myth: MYTH_2, fact: FACT_2 }, { myth: MYTH_3, fact: FACT_3 }, { myth: MYTH_4, fact: FACT_4 }] =
-  mythsTopic?.myths ?? [];
-
+// there so the text exists in exactly one place (per language).
+//
 // Each myth is paired with a true statement taken word-for-word from the matching fact, so the swipe
 // game has both answers to guess between. The alternating order keeps it from being guessable.
-export const MYTH_DECK: MythCard[] = [
-  { statement: MYTH_1, isMyth: true, myth: MYTH_1, explanation: FACT_1 },
-  {
-    statement: `Having a period is a normal sign that your reproductive system is healthy.`,
-    isMyth: false,
-    myth: MYTH_2,
-    explanation: FACT_2,
-  },
-  { statement: MYTH_3, isMyth: true, myth: MYTH_3, explanation: FACT_3 },
-  {
-    statement: `You do not need to stay home from school when you have your period.`,
-    isMyth: false,
-    myth: MYTH_4,
-    explanation: FACT_4,
-  },
-  { statement: MYTH_2, isMyth: true, myth: MYTH_2, explanation: FACT_2 },
-  {
-    statement: `Drinking fresh coconut water or cold water is completely safe, healthy, and helps keep your body hydrated during menstruation.`,
-    isMyth: false,
-    myth: MYTH_1,
-    explanation: FACT_1,
-  },
-  { statement: MYTH_4, isMyth: true, myth: MYTH_4, explanation: FACT_4 },
-  {
-    statement: `Taking warm baths or showers during your period is completely safe, helps keep your body clean, prevents unpleasant odors, and relaxes sore muscles.`,
-    isMyth: false,
-    myth: MYTH_3,
-    explanation: FACT_3,
-  },
+function buildMythDeck(myths: MythItem[], trueStatements: readonly string[]): MythCard[] {
+  const [{ myth: MYTH_1, fact: FACT_1 }, { myth: MYTH_2, fact: FACT_2 }, { myth: MYTH_3, fact: FACT_3 }, { myth: MYTH_4, fact: FACT_4 }] =
+    myths;
+  return [
+    { statement: MYTH_1, isMyth: true, myth: MYTH_1, explanation: FACT_1 },
+    { statement: trueStatements[0], isMyth: false, myth: MYTH_2, explanation: FACT_2 },
+    { statement: MYTH_3, isMyth: true, myth: MYTH_3, explanation: FACT_3 },
+    { statement: trueStatements[1], isMyth: false, myth: MYTH_4, explanation: FACT_4 },
+    { statement: MYTH_2, isMyth: true, myth: MYTH_2, explanation: FACT_2 },
+    { statement: trueStatements[2], isMyth: false, myth: MYTH_1, explanation: FACT_1 },
+    { statement: MYTH_4, isMyth: true, myth: MYTH_4, explanation: FACT_4 },
+    { statement: trueStatements[3], isMyth: false, myth: MYTH_3, explanation: FACT_3 },
+  ];
+}
+
+const TRUE_STATEMENTS = [
+  `Having a period is a normal sign that your reproductive system is healthy.`,
+  `You do not need to stay home from school when you have your period.`,
+  `Drinking fresh coconut water or cold water is completely safe, healthy, and helps keep your body hydrated during menstruation.`,
+  `Taking warm baths or showers during your period is completely safe, helps keep your body clean, prevents unpleasant odors, and relaxes sore muscles.`,
 ];
+
+const mythsOf = (topics: typeof educationTopics) => topics.find((t) => t.id === 'myths-and-facts')?.myths ?? [];
+
+export const MYTH_DECK: MythCard[] = buildMythDeck(mythsOf(educationTopics), TRUE_STATEMENTS);
 
 /* ------------------------------------------------------------------ Topic 6: traffic light */
 
@@ -313,3 +307,48 @@ export const TRAFFIC_LIGHTS: LightLevel[] = [
 
 export const TRAFFIC_LIGHT_EMERGENCY = `If you develop a sudden high fever, vomiting, dizziness, or a sunburn-like rash while using a tampon, remove it immediately and seek medical care.`;
 export const TRAFFIC_LIGHT_FOOTER = `Menstrual health is a matter of human rights, personal dignity, and gender equality.`;
+
+/* ------------------------------------------------------------------ language selection */
+
+/**
+ * Lays text-only translations over the English data: strings are replaced, lists line up by
+ * position, and anything the translation doesn't mention (icons, colours, ids, numbers) is kept.
+ */
+function overlayText<T>(base: T, text: unknown): T {
+  if (text === undefined || text === null) return base;
+  if (typeof base === 'string') return (typeof text === 'string' ? text : base) as T;
+  if (Array.isArray(base)) {
+    return base.map((item, i) => overlayText(item, Array.isArray(text) ? text[i] : undefined)) as T;
+  }
+  if (base && typeof base === 'object') {
+    const out: Record<string, unknown> = { ...(base as Record<string, unknown>) };
+    for (const key of Object.keys(out)) out[key] = overlayText(out[key], (text as Record<string, unknown>)[key]);
+    return out as T;
+  }
+  return base;
+}
+
+const ACTIVITIES_EN = {
+  PUBERTY_TIMELINE,
+  PUBERTY_MILESTONES,
+  LEAK_CARD,
+  KIT_ITEMS,
+  PRODUCT_COMPARE,
+  TSS_WARNING,
+  SYMPTOM_CARDS,
+  RELIEF,
+  MYTH_DECK,
+  TRAFFIC_LIGHTS,
+  TRAFFIC_LIGHT_EMERGENCY,
+  TRAFFIC_LIGHT_FOOTER,
+};
+
+const ACTIVITIES_KM: typeof ACTIVITIES_EN = {
+  ...overlayText(ACTIVITIES_EN, educationActivitiesKm),
+  MYTH_DECK: buildMythDeck(mythsOf(educationTopicsKhmer), educationActivitiesKm.TRUE_STATEMENTS),
+};
+
+/** All activity data in the app's current language. Call at render time so it follows a language switch. */
+export function getActivities(): typeof ACTIVITIES_EN {
+  return i18n.language === 'km' ? ACTIVITIES_KM : ACTIVITIES_EN;
+}

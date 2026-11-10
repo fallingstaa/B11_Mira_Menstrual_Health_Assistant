@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ReactNode } from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -23,7 +24,8 @@ type Props = {
  * component so checkin.tsx's "Period status" (the same 3 options, same wording) gets the exact
  * same treatment: nothing reads as pre-chosen for the user until they've actually tapped one.
  */
-export function ConfirmChipGroup({ label, confirmed, confirmedText = 'Confirmed', unconfirmedText = 'Confirm below', children, style }: Props) {
+export function ConfirmChipGroup({ label, confirmed, confirmedText, unconfirmedText, children, style }: Props) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.box, !confirmed && styles.boxUnconfirmed, style]}>
       <View style={styles.labelRow}>
@@ -33,7 +35,7 @@ export function ConfirmChipGroup({ label, confirmed, confirmedText = 'Confirmed'
         <View style={[styles.badge, confirmed ? styles.badgeDone : styles.badgeNeeded]}>
           <Ionicons name={confirmed ? 'checkmark-circle' : 'alert-circle'} size={12} color={confirmed ? Colors.primary : Colors.textOnPrimary} />
           <AppText variant="caption" color={confirmed ? Colors.primary : Colors.textOnPrimary} numberOfLines={1} style={styles.badgeText}>
-            {confirmed ? confirmedText : unconfirmedText}
+            {confirmed ? (confirmedText ?? t('dayEditor.confirmed')) : (unconfirmedText ?? t('dayEditor.confirmBelow'))}
           </AppText>
         </View>
       </View>

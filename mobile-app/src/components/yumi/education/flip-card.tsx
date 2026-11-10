@@ -1,5 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { AppText } from '@/components/yumi/app-text';
@@ -20,7 +21,9 @@ type Props = {
 };
 
 /** A card that flips in 3D (spring) between a front and a back face. Fixed height; the back scrolls. */
-export function FlipCard({ front, back, flipped, onFlip, height, frontColor, backColor, accent, backLabel = 'Tap to flip back' }: Props) {
+export function FlipCard({ front, back, flipped, onFlip, height, frontColor, backColor, accent, backLabel: backLabelProp }: Props) {
+  const { t } = useTranslation();
+  const backLabel = backLabelProp ?? t('education.tapToFlipBack');
   const progress = useSharedValue(flipped ? 1 : 0);
 
   useEffect(() => {

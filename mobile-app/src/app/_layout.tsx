@@ -1,7 +1,7 @@
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -9,20 +9,27 @@ import { DevNotificationTester } from '@/components/DevNotificationTester';
 import { Colors, FontsToLoad } from '@/constants/theme';
 import { AppStateProvider } from '@/context/app-state';
 import { AuthProvider } from '@/context/auth-context';
+import { loadSavedLanguage } from '@/i18n';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(FontsToLoad);
+  const [languageReady, setLanguageReady] = useState(false);
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    loadSavedLanguage().finally(() => setLanguageReady(true));
+  }, []);
+
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && languageReady) {
       // The Yumi splash route takes over from here with its own animated mascot.
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, languageReady]);
 
-  if (!fontsLoaded && !fontError) {
+  // Waiting on the saved language too, so a Khmer user never sees a flash of English first.
+  if ((!fontsLoaded && !fontError) || !languageReady) {
     return null;
   }
 

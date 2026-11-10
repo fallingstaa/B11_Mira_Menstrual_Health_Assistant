@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, TextInput } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Button } from '@/components/yumi/button';
@@ -30,6 +31,7 @@ import { daysBetween, eachDayInRange, isSameDay } from '@/utils/date';
  */
 export default function RecordScreen() {
   const { markPeriodDay, setPeriodEndDay, updatePeriodDayEntry, commitDays } = useAppState();
+  const { t } = useTranslation();
   const [today] = useState(() => new Date());
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
@@ -49,8 +51,8 @@ export default function RecordScreen() {
 
   useEffect(() => {
     if (!saved) return;
-    const t = setTimeout(() => router.back(), 1100);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => router.back(), 1100);
+    return () => clearTimeout(timer);
   }, [saved]);
 
   const [saving, setSaving] = useState(false);
@@ -68,7 +70,7 @@ export default function RecordScreen() {
   // closing. The user had to reopen the day to discover it silently hadn't actually saved.
   const handleRecord = async () => {
     if (daysBetween(startDate, endDate) < 0) {
-      Alert.alert('End date is before start date', "The end date can't be earlier than the start date.");
+      Alert.alert(t('record.endBeforeStartTitle'), t('record.endBeforeStartBody'));
       return;
     }
     if (saving) return;
@@ -87,7 +89,7 @@ export default function RecordScreen() {
     try {
       await commitDays(entries, 'record');
     } catch (err) {
-      Alert.alert("Couldn't save", err instanceof Error ? err.message : 'Please try again.');
+      Alert.alert(t('common.couldntSave'), err instanceof Error ? err.message : t('common.tryAgain'));
       return;
     } finally {
       setSaving(false);
@@ -111,49 +113,49 @@ export default function RecordScreen() {
       edges={['top', 'left', 'right', 'bottom']}
       footer={
         <Button
-          label="Record"
+          label={t('calendar.record')}
           icon={<Ionicons name="save-outline" size={16} color={Colors.textOnPrimary} />}
           onPress={handleRecord}
           loading={saving}
         />
       }>
-      <ModalHeader title="Record Period" subtitle="Pick the dates, add details if you'd like, then Record." />
+      <ModalHeader title={t('record.title')} subtitle={t('record.subtitle')} />
 
       <Card style={styles.card}>
-        <DateStepper label="Start date" date={startDate} onChange={setStartDate} />
-        <DateStepper label="End date" date={endDate} onChange={setEndDate} />
+        <DateStepper label={t('record.startDate')} date={startDate} onChange={setStartDate} />
+        <DateStepper label={t('record.endDate')} date={endDate} onChange={setEndDate} />
       </Card>
 
       <Card style={styles.card}>
         <AppText variant="bodyMedium" style={styles.label}>
-          Flow level · optional
+          {t('record.flowOptional')}
         </AppText>
         <FlowLevelPicker value={flow} onChange={setFlow} />
       </Card>
 
       <Card style={styles.card}>
-        <CollapsibleChipField label="Symptoms" options={symptomOptions} selectedKeys={symptoms} onToggle={toggleSymptom} />
+        <CollapsibleChipField label={t('record.symptoms')} options={symptomOptions} selectedKeys={symptoms} onToggle={toggleSymptom} />
       </Card>
 
       <Card style={styles.card}>
-        <CollapsibleChipField label="Mood" options={moodOptions} selectedKeys={mood} onToggle={toggleMood} />
+        <CollapsibleChipField label={t('record.mood')} options={moodOptions} selectedKeys={mood} onToggle={toggleMood} />
       </Card>
 
       <Card style={[styles.card, styles.notesCard]}>
         <AppText variant="bodyMedium" style={styles.label}>
-          Notes · optional
+          {t('record.notesOptional')}
         </AppText>
         <TextInput
           value={notes}
           onChangeText={setNotes}
-          placeholder="Anything else you'd like to remember about this cycle?"
+          placeholder={t('record.notesPlaceholder')}
           placeholderTextColor={Colors.textMuted}
           multiline
           style={styles.notesInput}
         />
       </Card>
 
-      {saved && <SuccessOverlay message="Record saved!" />}
+      {saved && <SuccessOverlay message={t('record.saved')} />}
     </ScreenContainer>
   );
 }

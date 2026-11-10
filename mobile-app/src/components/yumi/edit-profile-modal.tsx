@@ -2,11 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
 import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Button } from '@/components/yumi/button';
 import { IconCircle } from '@/components/yumi/icon-circle';
 import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/theme';
+import { useLocalizedTextStyle } from '@/i18n/fonts';
 
 type Props = {
   visible: boolean;
@@ -29,6 +31,8 @@ const AVATAR_SIZE = 92;
  * and PUTs/POSTs only those to the backend (see its handleSaveProfile).
  */
 export function EditProfileModal({ visible, name, email, photoUri, photoHeaders, onCancel, onSave }: Props) {
+  const { t } = useTranslation();
+  const inputStyle = useLocalizedTextStyle(styles.input);
   const [nameInput, setNameInput] = useState(name);
   const [emailInput, setEmailInput] = useState(email);
   const [photo, setPhoto] = useState(photoUri);
@@ -50,7 +54,7 @@ export function EditProfileModal({ visible, name, email, photoUri, photoHeaders,
   const pickPhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Photo access needed', 'Yumi needs permission to your photos to set a profile picture.');
+      Alert.alert(t('editProfile.photoAccessTitle'), t('editProfile.photoAccessBody'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -68,11 +72,11 @@ export function EditProfileModal({ visible, name, email, photoUri, photoHeaders,
     const trimmedName = nameInput.trim();
     const trimmedEmail = emailInput.trim();
     if (!trimmedName) {
-      Alert.alert('Name required', "Your name can't be empty.");
+      Alert.alert(t('editProfile.nameRequiredTitle'), t('editProfile.nameRequiredBody'));
       return;
     }
     if (!trimmedEmail.includes('@')) {
-      Alert.alert('Check your email', "That doesn't look like a valid email address.");
+      Alert.alert(t('editProfile.checkEmailTitle'), t('editProfile.checkEmailBody'));
       return;
     }
     onSave({ name: trimmedName, email: trimmedEmail, photoUri: photo });
@@ -86,7 +90,7 @@ export function EditProfileModal({ visible, name, email, photoUri, photoHeaders,
         <View style={[styles.sheet, Shadow.raised]}>
           <View style={styles.handle} />
           <View style={styles.headerRow}>
-            <AppText variant="h2">Edit Profile</AppText>
+            <AppText variant="h2">{t('editProfile.title')}</AppText>
             <Pressable onPress={onCancel} hitSlop={8}>
               <Ionicons name="close" size={22} color={Colors.textMuted} />
             </Pressable>
@@ -113,31 +117,31 @@ export function EditProfileModal({ visible, name, email, photoUri, photoHeaders,
               </Pressable>
               <Pressable onPress={pickPhoto} hitSlop={8}>
                 <AppText variant="small" color={Colors.primary} style={styles.changePhotoText}>
-                  {photo ? 'Change photo' : 'Add a photo'}
+                  {photo ? t('editProfile.changePhoto') : t('editProfile.addPhoto')}
                 </AppText>
               </Pressable>
               {photo && (
                 <Pressable onPress={() => setPhoto(null)} hitSlop={8}>
                   <AppText variant="small" color={Colors.textMuted}>
-                    Remove photo
+                    {t('editProfile.removePhoto')}
                   </AppText>
                 </Pressable>
               )}
             </View>
 
             <AppText variant="caption" style={styles.fieldLabel}>
-              NAME
+              {t('editProfile.nameLabel')}
             </AppText>
             <TextInput
               value={nameInput}
               onChangeText={setNameInput}
-              placeholder="Your name"
+              placeholder={t('editProfile.namePlaceholder')}
               placeholderTextColor={Colors.textMuted}
-              style={styles.input}
+              style={inputStyle}
             />
 
             <AppText variant="caption" style={styles.fieldLabel}>
-              EMAIL
+              {t('editProfile.emailLabel')}
             </AppText>
             <TextInput
               value={emailInput}
@@ -147,10 +151,10 @@ export function EditProfileModal({ visible, name, email, photoUri, photoHeaders,
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
-              style={styles.input}
+              style={inputStyle}
             />
 
-            <Button label="Save Changes" onPress={handleSave} style={styles.saveButton} />
+            <Button label={t('editProfile.save')} onPress={handleSave} style={styles.saveButton} />
           </ScrollView>
         </View>
       </View>

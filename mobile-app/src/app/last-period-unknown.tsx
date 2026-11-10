@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Button } from '@/components/yumi/button';
@@ -11,10 +12,10 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
 
 // Same icons as Home's Quick Actions, for consistency.
-const links: { key: string; icon: keyof typeof Ionicons.glyphMap; label: string; href: '/(tabs)/education' | '/(tabs)/assistant' | '/notifications' }[] = [
-  { key: 'education', icon: 'book', label: 'Browse Education', href: '/(tabs)/education' },
-  { key: 'assistant', icon: 'chatbubble-ellipses', label: 'Ask Yumi AI', href: '/(tabs)/assistant' },
-  { key: 'reminders', icon: 'alarm', label: 'Set Up Reminders', href: '/notifications' },
+const links: { key: string; icon: keyof typeof Ionicons.glyphMap; label: 'lastPeriodUnknown.browse' | 'lastPeriodUnknown.ask' | 'lastPeriodUnknown.reminders'; href: '/(tabs)/education' | '/(tabs)/assistant' | '/notifications' }[] = [
+  { key: 'education', icon: 'book', label: 'lastPeriodUnknown.browse', href: '/(tabs)/education' },
+  { key: 'assistant', icon: 'chatbubble-ellipses', label: 'lastPeriodUnknown.ask', href: '/(tabs)/assistant' },
+  { key: 'reminders', icon: 'alarm', label: 'lastPeriodUnknown.reminders', href: '/notifications' },
 ];
 
 /**
@@ -25,6 +26,7 @@ const links: { key: string; icon: keyof typeof Ionicons.glyphMap; label: string;
  */
 export default function LastPeriodUnknownScreen() {
   const { setIsBeginner, setAverageCycleLength } = useAppState();
+  const { t } = useTranslation();
 
   useEffect(() => {
     setIsBeginner(true);
@@ -40,13 +42,13 @@ export default function LastPeriodUnknownScreen() {
       </View>
 
       <AppText variant="h1" center style={styles.title}>
-        That&apos;s okay!
+        {t('lastPeriodUnknown.title')}
       </AppText>
       <AppText variant="bodyLarge" center style={styles.headline}>
-        Start tracking from your next period.
+        {t('lastPeriodUnknown.headline')}
       </AppText>
       <AppText variant="small" center color={Colors.textSecondary} style={styles.body}>
-        While you wait, you can browse Education, ask Yumi anything, set up reminders, or just explore the app.
+        {t('lastPeriodUnknown.body')}
       </AppText>
 
       <View style={styles.links}>
@@ -54,13 +56,13 @@ export default function LastPeriodUnknownScreen() {
           <Pressable key={link.key} onPress={() => router.push(link.href)} style={styles.linkRow}>
             <Ionicons name={link.icon} size={18} color={Colors.primary} />
             <AppText variant="bodyMedium" color={Colors.primary}>
-              {link.label}
+              {t(link.label)}
             </AppText>
           </Pressable>
         ))}
       </View>
 
-      <Button label="Go to Home" onPress={() => router.dismissTo('/(tabs)/home')} style={styles.homeButton} />
+      <Button label={t('lastPeriodUnknown.goHome')} onPress={() => router.dismissTo('/(tabs)/home')} style={styles.homeButton} />
     </ScreenContainer>
   );
 }

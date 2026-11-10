@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
@@ -20,6 +21,7 @@ import { useAuth } from '@/context/auth-context';
  */
 export default function SplashRoute() {
   const { user, initializing } = useAuth();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (initializing) return;
@@ -43,7 +45,7 @@ export default function SplashRoute() {
 
       <Animated.View entering={FadeInDown.duration(500).delay(500)}>
         <AppText variant="bodyLarge" center color={Colors.textSecondary} style={styles.tagline}>
-          Your friendly period companion
+          {t('splash.tagline')}
         </AppText>
       </Animated.View>
     </View>

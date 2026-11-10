@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Svg, { Circle, G } from 'react-native-svg';
 
 import { AppText } from '@/components/yumi/app-text';
@@ -12,6 +13,7 @@ type Props = {
 
 /** Radial progress ring showing how far into the cycle today is. */
 export function CycleRing({ currentDay, cycleLength, size = 130 }: Props) {
+  const { t } = useTranslation();
   const strokeWidth = 12;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -41,7 +43,7 @@ export function CycleRing({ currentDay, cycleLength, size = 130 }: Props) {
           {currentDay}
         </AppText>
         <AppText variant="caption" color="rgba(255,255,255,0.85)">
-          of {cycleLength} days
+          {t('cycleRing.ofDays', { n: cycleLength })}
         </AppText>
       </View>
     </View>

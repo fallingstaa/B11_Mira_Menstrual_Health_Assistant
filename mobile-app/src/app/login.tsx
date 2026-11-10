@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import { AppText } from '@/components/yumi/app-text';
 import { Button } from '@/components/yumi/button';
+import { LanguageToggle } from '@/components/yumi/language-toggle';
 import { MascotMini } from '@/components/yumi/mascot';
 import { ScreenContainer } from '@/components/yumi/screen-container';
 import { SocialButton } from '@/components/yumi/social-button';
@@ -13,20 +15,22 @@ import { TextField } from '@/components/yumi/text-field';
 import { auth } from '@/config/firebase';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
+import i18n from '@/i18n';
 
 /** Firebase's auth/xxx-yyy error codes turned into copy a first-time user won't be confused by. */
 function loginErrorMessage(err: unknown): string {
   const code = (err as { code?: string })?.code;
-  if (code === 'auth/invalid-email') return 'That email address looks off — check for a typo.';
+  if (code === 'auth/invalid-email') return i18n.t('auth.errors.invalidEmail');
   if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
-    return 'Email or password is incorrect.';
+    return i18n.t('auth.errors.wrongCredentials');
   }
-  if (code === 'auth/too-many-requests') return 'Too many attempts — try again in a moment.';
-  return 'Something went wrong logging in. Please try again.';
+  if (code === 'auth/too-many-requests') return i18n.t('auth.errors.tooManyRequests');
+  return i18n.t('auth.login.genericError');
 }
 
 export default function LoginScreen() {
   const { login } = useAuth();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
@@ -58,19 +62,22 @@ export default function LoginScreen() {
 
   return (
     <ScreenContainer>
+      <View style={styles.languageRow}>
+        <LanguageToggle />
+      </View>
       <Animated.View entering={FadeInDown.duration(450)} style={styles.header}>
         <MascotMini size={44} />
         <AppText variant="h1" style={styles.headerTitle}>
-          Welcome back
+          {t('auth.login.title')}
         </AppText>
         <AppText variant="body" color={Colors.textSecondary}>
-          Log in to keep up with your cycle.
+          {t('auth.login.subtitle')}
         </AppText>
       </Animated.View>
 
       <Animated.View entering={FadeInUp.duration(450).delay(120)}>
         <TextField
-          label="Email"
+          label={t('auth.email')}
           icon="mail-outline"
           placeholder="you@example.com"
           keyboardType="email-address"
@@ -82,7 +89,7 @@ export default function LoginScreen() {
           }}
         />
         <TextField
-          label="Password"
+          label={t('auth.password')}
           icon="lock-closed-outline"
           placeholder="••••••••"
           isPassword
@@ -100,21 +107,21 @@ export default function LoginScreen() {
               {remember && <Ionicons name="checkmark" size={13} color={Colors.textOnPrimary} />}
             </View>
             <AppText variant="small" color={Colors.textSecondary}>
-              Remember me
+              {t('auth.login.rememberMe')}
             </AppText>
           </Pressable>
           <Pressable hitSlop={6} onPress={() => router.push('/forgot-password')}>
             <AppText variant="small" color={Colors.primary}>
-              Forgot password?
+              {t('auth.login.forgotPassword')}
             </AppText>
           </Pressable>
         </View>
 
-        <Button label="Log In" onPress={handleLogin} loading={loading} style={styles.loginButton} />
+        <Button label={t('auth.login.submit')} onPress={handleLogin} loading={loading} style={styles.loginButton} />
 
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
-          <AppText variant="small">or continue with</AppText>
+          <AppText variant="small">{t('auth.orContinueWith')}</AppText>
           <View style={styles.dividerLine} />
         </View>
 
@@ -122,18 +129,18 @@ export default function LoginScreen() {
             Console first (see chat notes) — not wired to real auth yet, so this
             just says so instead of silently faking a login. */}
         <SocialButton
-          label="Continue with Google"
-          onPress={() => Alert.alert('Coming soon', 'Google sign-in isn\'t set up yet — log in with email for now.')}
+          label={t('auth.continueWithGoogle')}
+          onPress={() => Alert.alert(t('common.comingSoon'), t('auth.googleNotReady'))}
         />
       </Animated.View>
 
       <View style={styles.footer}>
         <AppText variant="body" color={Colors.textSecondary}>
-          New to Yumi?{' '}
+          {t('auth.login.newHere')}{' '}
         </AppText>
         <Link href="/register" replace>
           <AppText variant="bodyMedium" color={Colors.primary}>
-            Create an account
+            {t('auth.login.createAccount')}
           </AppText>
         </Link>
       </View>
@@ -142,7 +149,8 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { alignItems: 'center', paddingTop: Spacing.xxl, paddingBottom: Spacing.xxxl, gap: Spacing.sm },
+  languageRow: { alignItems: 'flex-end', paddingTop: Spacing.sm },
+  header: { alignItems: 'center', paddingTop: Spacing.lg, paddingBottom: Spacing.xxxl, gap: Spacing.sm },
   headerTitle: { marginTop: Spacing.sm },
   optionsRow: {
     flexDirection: 'row',

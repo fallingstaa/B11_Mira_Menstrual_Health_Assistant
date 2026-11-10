@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { File } from 'expo-file-system';
 import { router } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Image, Pressable, Share, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/yumi/app-text';
@@ -14,6 +15,7 @@ import { SettingsRow } from '@/components/yumi/settings-row';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useAvatarAuthHeader } from '@/hooks/use-avatar-header';
+import appI18n, { currentLanguage, fromLanguageName, setAppLanguage, toLanguageName } from '@/i18n';
 import { apiRequest, apiUpload } from '@/utils/api'; //specail part
 
 type Preferences = { pushNotifications: boolean; checkinReminders: boolean };
@@ -39,6 +41,9 @@ function guessImageMimeType(uri: string): string {
 
 export default function ProfileScreen() {
   const { logout } = useAuth();
+  const { t, i18n } = useTranslation();
+  // The device's language is the source of truth (see i18n/index.ts); the account copy follows it.
+  const appLanguageName = toLanguageName(i18n.language === 'km' ? 'km' : 'en');
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -57,13 +62,22 @@ export default function ProfileScreen() {
     apiRequest<ProfileData>('/profile/me')
       .then((data) => {
         if (!cancelled) {
+          // A language picked before signing up (onboarding/login toggle) only lives on the
+          // device until now — bring the account's copy in line with it, quietly.
+          const deviceLanguage = toLanguageName(currentLanguage());
+          if (data.preferredLanguage !== deviceLanguage) {
+            data = { ...data, preferredLanguage: deviceLanguage };
+            apiRequest('/profile/me', { method: 'PUT', body: { preferredLanguage: deviceLanguage }, quiet: true }).catch(
+              () => {},
+            );
+          }
           setProfile(data);
           setAvatarUri(data.avatarUrl);
         }
       })
       .catch((err) => {
         console.error('[profile] failed to load /profile/me:', err);
-        if (!cancelled) setError("Couldn't load your profile.");
+        if (!cancelled) setError(appI18n.t('profile.loadError'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -107,7 +121,7 @@ export default function ProfileScreen() {
       });
     } catch (err) {
       console.error('[profile] failed to export data:', err);
-      Alert.alert("Couldn't export your data", err instanceof Error ? err.message : 'Please try again.');
+      Alert.alert(t('profile.exportError'), err instanceof Error ? err.message : t('common.tryAgain'));
     }
   };
 
@@ -118,12 +132,12 @@ export default function ProfileScreen() {
    *  left for a session to point at. */
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Delete your account?',
-      "This permanently deletes your account and everything in it — period history, chat history, reminders. This can't be undone.",
+      t('profile.deleteConfirmTitle'),
+      t('profile.deleteConfirmBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -132,7 +146,7 @@ export default function ProfileScreen() {
               router.replace('/login');
             } catch (err) {
               console.error('[profile] failed to delete account:', err);
-              Alert.alert("Couldn't delete your account", err instanceof Error ? err.message : 'Please try again.');
+              Alert.alert(t('profile.deleteError'), err instanceof Error ? err.message : t('common.tryAgain'));
             }
           },
         },
@@ -145,15 +159,16 @@ export default function ProfileScreen() {
    *  set it before now. */
   const handleSelectLanguage = async (language: string) => {
     setLanguageModalVisible(false);
-    if (!profile || profile.preferredLanguage === language) return;
-    const previous = profile.preferredLanguage;
-    setProfile({ ...profile, preferredLanguage: language });
+    if (language === appLanguageName) return;
+    // The app switches straight away and stays switched even if the save below fails — the
+    // device's choice is what the UI follows; the account copy is only kept in sync with it.
+    await setAppLanguage(fromLanguageName(language));
+    if (profile) setProfile({ ...profile, preferredLanguage: language });
 
     try {
       await apiRequest('/profile/me', { method: 'PUT', body: { preferredLanguage: language } });
     } catch (err) {
-      console.error('[profile] failed to save language, rolling back:', err);
-      setProfile((p) => (p ? { ...p, preferredLanguage: previous } : p));
+      console.error('[profile] failed to save language to account:', err);
     }
   };
 
@@ -187,7 +202,7 @@ export default function ProfileScreen() {
         await apiRequest('/profile/me', { method: 'PUT', body: { name: details.name } });
       } catch (err) {
         console.error('[profile] failed to save name, rolling back:', err);
-        failures.push(err instanceof Error ? err.message : 'Name');
+        failures.push(err instanceof Error ? err.message : t('profile.fieldName'));
         setProfile((p) => (p ? { ...p, name: previousProfile.name } : p));
       }
     }
@@ -197,7 +212,7 @@ export default function ProfileScreen() {
         await apiRequest('/profile/email', { method: 'PUT', body: { email: details.email } });
       } catch (err) {
         console.error('[profile] failed to save email, rolling back:', err);
-        failures.push(err instanceof Error ? err.message : 'Email');
+        failures.push(err instanceof Error ? err.message : t('auth.email'));
         setProfile((p) => (p ? { ...p, email: previousProfile.email } : p));
       }
     }
@@ -222,13 +237,13 @@ export default function ProfileScreen() {
         }
       } catch (err) {
         console.error('[profile] failed to save photo, rolling back:', err);
-        failures.push(err instanceof Error ? err.message : 'Photo');
+        failures.push(err instanceof Error ? err.message : t('profile.fieldPhoto'));
         setAvatarUri(previousAvatarUri);
       }
     }
 
     if (failures.length > 0) {
-      Alert.alert("Couldn't save everything", failures.join('\n'));
+      Alert.alert(t('profile.saveError'), failures.join('\n'));
     }
   };
 
@@ -237,7 +252,7 @@ export default function ProfileScreen() {
   return (
     <ScreenContainer tabBar>
       <AppText variant="h1" style={styles.pageTitle}>
-        Profile
+        {t('profile.title')}
       </AppText>
 
       <Card style={styles.profileCard}>
@@ -255,7 +270,7 @@ export default function ProfileScreen() {
         )}
         <View style={{ flex: 1 }}>
           {loading ? (
-            <AppText variant="small">Loading…</AppText>
+            <AppText variant="small">{t('common.loading')}</AppText>
           ) : error ? (
             <AppText variant="small" color={Colors.primary}>
               {error}
@@ -274,21 +289,21 @@ export default function ProfileScreen() {
         </Pressable>
       </Card>
 
-      <SectionCard title="Preferences" delay={60}>
+      <SectionCard title={t('profile.preferences')} delay={60}>
         <SettingsRow
           icon="language-outline"
           color={Colors.lavender}
           tint={Colors.lavenderTint}
-          label="Language"
-          value={profile?.preferredLanguage ?? 'English'}
-          onPress={() => profile && setLanguageModalVisible(true)}
+          label={t('profile.language')}
+          value={appLanguageName === 'Khmer' ? 'ខ្មែរ' : 'English'}
+          onPress={() => setLanguageModalVisible(true)}
         />
         <Divider />
         <SettingsRow
           icon="notifications-outline"
           color={Colors.info}
           tint={Colors.infoTint}
-          label="Push notifications"
+          label={t('profile.pushNotifications')}
           toggle={profile?.preferences.pushNotifications ?? true}
           onToggle={(value) => updatePreference({ pushNotifications: value })}
         />
@@ -297,35 +312,35 @@ export default function ProfileScreen() {
           icon="alarm-outline"
           color={Colors.peach}
           tint={Colors.peachTint}
-          label="Daily check-in reminders"
+          label={t('profile.checkinReminders')}
           toggle={profile?.preferences.checkinReminders ?? true}
           onToggle={(value) => updatePreference({ checkinReminders: value })}
         />
       </SectionCard>
 
-      <SectionCard title="Privacy" delay={100}>
-        <SettingsRow icon="lock-closed-outline" color={Colors.teal} tint={Colors.tealTint} label="Privacy policy" onPress={() => {}} />
+      <SectionCard title={t('profile.privacy')} delay={100}>
+        <SettingsRow icon="lock-closed-outline" color={Colors.teal} tint={Colors.tealTint} label={t('profile.privacyPolicy')} onPress={() => {}} />
         <Divider />
-        <SettingsRow icon="download-outline" color={Colors.teal} tint={Colors.tealTint} label="Export my data" onPress={handleExportData} />
+        <SettingsRow icon="download-outline" color={Colors.teal} tint={Colors.tealTint} label={t('profile.exportData')} onPress={handleExportData} />
         <Divider />
-        <SettingsRow icon="trash-outline" destructive label="Delete my account" onPress={handleDeleteAccount} />
+        <SettingsRow icon="trash-outline" destructive label={t('profile.deleteAccount')} onPress={handleDeleteAccount} />
       </SectionCard>
 
-      <SectionCard title="About" delay={140}>
-        <SettingsRow icon="heart-outline" label="About Yumi" onPress={() => {}} />
+      <SectionCard title={t('profile.about')} delay={140}>
+        <SettingsRow icon="heart-outline" label={t('profile.aboutYumi')} onPress={() => {}} />
         <Divider />
-        <SettingsRow icon="help-circle-outline" label="Help & support" onPress={() => {}} />
+        <SettingsRow icon="help-circle-outline" label={t('profile.help')} onPress={() => {}} />
         <Divider />
         <SettingsRow
           icon="log-out-outline"
           destructive
-          label="Log out"
+          label={t('profile.logOut')}
           onPress={handleLogout}
         />
       </SectionCard>
 
       <AppText variant="caption" center style={styles.version}>
-        Yumi v1.0.0 · Made with care for first-time menstruators
+        {t('profile.version', { version: '1.0.0' })}
       </AppText>
 
       {profile && (
@@ -339,14 +354,14 @@ export default function ProfileScreen() {
             onCancel={() => setEditModalVisible(false)}
             onSave={handleSaveProfile}
           />
-          <LanguagePickerModal
-            visible={languageModalVisible}
-            value={profile.preferredLanguage}
-            onSelect={handleSelectLanguage}
-            onClose={() => setLanguageModalVisible(false)}
-          />
         </>
       )}
+      <LanguagePickerModal
+        visible={languageModalVisible}
+        value={appLanguageName}
+        onSelect={handleSelectLanguage}
+        onClose={() => setLanguageModalVisible(false)}
+      />
     </ScreenContainer>
   );
 }

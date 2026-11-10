@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from 'expo-router/tabs';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,17 +20,20 @@ import { Colors, Radius, Shadow, Spacing } from '@/constants/theme';
  */
 export const TAB_BAR_CLEARANCE = 130;
 
-const ICONS: Record<string, { on: keyof typeof Ionicons.glyphMap; off: keyof typeof Ionicons.glyphMap; label: string }> = {
-  home: { on: 'home', off: 'home-outline', label: 'Home' },
-  calendar: { on: 'calendar', off: 'calendar-outline', label: 'Calendar' },
-  education: { on: 'book', off: 'book-outline', label: 'Learn' },
-  assistant: { on: 'chatbubble-ellipses', off: 'chatbubble-ellipses-outline', label: 'Yumi AI' },
-  profile: { on: 'person', off: 'person-outline', label: 'Profile' },
+type TabLabelKey = 'tabs.home' | 'tabs.calendar' | 'tabs.learn' | 'tabs.assistant' | 'tabs.profile';
+
+const ICONS: Record<string, { on: keyof typeof Ionicons.glyphMap; off: keyof typeof Ionicons.glyphMap; labelKey: TabLabelKey }> = {
+  home: { on: 'home', off: 'home-outline', labelKey: 'tabs.home' },
+  calendar: { on: 'calendar', off: 'calendar-outline', labelKey: 'tabs.calendar' },
+  education: { on: 'book', off: 'book-outline', labelKey: 'tabs.learn' },
+  assistant: { on: 'chatbubble-ellipses', off: 'chatbubble-ellipses-outline', labelKey: 'tabs.assistant' },
+  profile: { on: 'person', off: 'person-outline', labelKey: 'tabs.profile' },
 };
 
 /** Custom floating bottom tab bar matching the Yumi design system. */
 export function BottomNav({ state, emitter, navigateToTab }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]} pointerEvents="box-none">
@@ -43,7 +47,7 @@ export function BottomNav({ state, emitter, navigateToTab }: BottomTabBarProps) 
               key={route.key}
               focused={focused}
               icon={focused ? meta.on : meta.off}
-              label={meta.label}
+              label={t(meta.labelKey)}
               onPress={() => {
                 const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
                 if (!focused && !event.defaultPrevented) {

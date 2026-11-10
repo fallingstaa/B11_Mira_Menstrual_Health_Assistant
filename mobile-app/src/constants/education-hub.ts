@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 
+import { educationTopicsKm, type TopicText } from '@/constants/education-hub.km';
 import { Colors } from '@/constants/theme';
+import i18n from '@/i18n';
 
 /**
  * Education Hub content — the six grounded topics, kept as plain data so the screens/components
@@ -381,6 +383,42 @@ export const educationTopics: Topic[] = [
   },
 ];
 
+/** Lays a topic's Khmer text (education-hub.km.ts) over the English structure; missing pieces stay English. */
+function withText(topic: Topic, text: TopicText | undefined): Topic {
+  if (!text) return topic;
+  const sections = topic.sections.map((section): Section => {
+    const t = text.sections?.[section.id];
+    if (!t) return section;
+    const title = t.title ?? section.title;
+    switch (section.kind) {
+      case 'text':
+        return { ...section, title, paragraphs: t.paragraphs ?? section.paragraphs };
+      case 'steps':
+        return { ...section, title, intro: t.intro ?? section.intro, steps: t.steps ?? section.steps };
+      case 'phases':
+        return {
+          ...section,
+          title,
+          intro: t.intro ?? section.intro,
+          slides: section.slides.map((slide, i) => ({
+            ...slide,
+            title: t.slides?.[i]?.title ?? slide.title,
+            text: t.slides?.[i]?.text ?? slide.text,
+          })),
+        };
+    }
+  });
+  const myths = topic.myths?.map((m, i) => text.myths?.[i] ?? m);
+  return { ...topic, title: text.title ?? topic.title, sections, myths };
+}
+
+export const educationTopicsKhmer: Topic[] = educationTopics.map((t) => withText(t, educationTopicsKm[t.id]));
+
+/** The six topics in the app's current language. Call at render time (not module load) so it follows a language switch. */
+export function getEducationTopics(): Topic[] {
+  return i18n.language === 'km' ? educationTopicsKhmer : educationTopics;
+}
+
 export function getEducationTopic(id: string | undefined): Topic | undefined {
-  return educationTopics.find((t) => t.id === id);
+  return getEducationTopics().find((t) => t.id === id);
 }

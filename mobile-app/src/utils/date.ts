@@ -1,25 +1,54 @@
-const MONTHS_SHORT = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
-const MONTHS_LONG = [
+import i18n from '@/i18n';
+
+const MONTHS_SHORT_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_LONG_EN = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
-export const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+// Khmer month names have no common abbreviations, so short and long are the same.
+const MONTHS_KM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
 
+const WEEKDAYS_EN = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+// Sunday-first, same as getMonthGrid: អាទិត្យ ចន្ទ អង្គារ ពុធ ព្រហស្បតិ៍ សុក្រ សៅរ៍
+const WEEKDAYS_KM = ['អា', 'ច', 'អ', 'ពុ', 'ព្រ', 'សុ', 'ស'];
+
+const isKhmer = () => i18n.language === 'km';
+const monthShort = (m: number) => (isKhmer() ? MONTHS_KM[m] : MONTHS_SHORT_EN[m]);
+const monthLong = (m: number) => (isKhmer() ? MONTHS_KM[m] : MONTHS_LONG_EN[m]);
+
+/** One-letter weekday headers for month grids, Sunday first, in the current language. */
+export function weekdayLabels(): string[] {
+  return isKhmer() ? WEEKDAYS_KM : WEEKDAYS_EN;
+}
+
+/** "Jan 5" / "5 មករា" */
 export function formatShort(date: Date): string {
-  return `${MONTHS_SHORT[date.getMonth()]} ${date.getDate()}`;
+  return isKhmer() ? `${date.getDate()} ${monthShort(date.getMonth())}` : `${monthShort(date.getMonth())} ${date.getDate()}`;
 }
 
+/** "January 5, 2026" / "5 មករា 2026" */
 export function formatLong(date: Date): string {
-  return `${MONTHS_LONG[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+  return isKhmer()
+    ? `${date.getDate()} ${monthLong(date.getMonth())} ${date.getFullYear()}`
+    : `${monthLong(date.getMonth())} ${date.getDate()}, ${date.getFullYear()}`;
 }
 
+/** "Jan 5–9" / "5–9 មករា", or a full two-date range across months. */
 export function formatRange(start: Date, end: Date): string {
   if (start.getMonth() === end.getMonth()) {
-    return `${MONTHS_SHORT[start.getMonth()]} ${start.getDate()}–${end.getDate()}`;
+    return isKhmer()
+      ? `${start.getDate()}–${end.getDate()} ${monthShort(start.getMonth())}`
+      : `${monthShort(start.getMonth())} ${start.getDate()}–${end.getDate()}`;
   }
   return `${formatShort(start)} – ${formatShort(end)}`;
+}
+
+/** Hour:minute in the current language's style (Khmer has no AM/PM convention in the app, so 24-hour). */
+export function formatTime(date: Date): string {
+  if (isKhmer()) {
+    return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+  }
+  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 /** A new Date `days` calendar days after `date` (negative goes backward). Never mutates `date`. */
@@ -107,15 +136,15 @@ export function isWithinRange(date: Date, start: Date, end: Date): boolean {
 }
 
 export function monthLabel(date: Date): string {
-  return `${MONTHS_LONG[date.getMonth()]} ${date.getFullYear()}`;
+  return `${monthLong(date.getMonth())} ${date.getFullYear()}`;
 }
 
 /** Time-of-day greeting ("Good morning"/"afternoon"/"evening") based on the device clock. */
 export function greeting(date: Date = new Date()): string {
   const hour = date.getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (hour < 12) return i18n.t('greeting.morning');
+  if (hour < 18) return i18n.t('greeting.afternoon');
+  return i18n.t('greeting.evening');
 }
 
 /** Cells for a month grid, including leading/trailing days from adjacent months. */

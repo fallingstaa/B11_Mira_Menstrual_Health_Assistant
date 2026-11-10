@@ -12,7 +12,7 @@ router.use(authMiddleware);
  * /api/ai/ask:
  *   post:
  *     tags: [AI Assistant]
- *     summary: Ask Mira a health question
+ *     summary: Ask Yumi a health question
  *     description: >
  *       Creates an `AIConversation` turn end-to-end today, but `ragService.js` and `geminiService.js` are still
  *       placeholders — `retrieveContext()` always returns empty context and `generateReply()` always returns a

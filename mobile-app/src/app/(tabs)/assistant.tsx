@@ -4,12 +4,12 @@ import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View } from 're
 import Animated, { FadeIn, useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppText } from '@/components/mira/app-text';
-import { TAB_BAR_CLEARANCE } from '@/components/mira/bottom-nav';
-import { ChatBubble } from '@/components/mira/chat-bubble';
-import { Chip } from '@/components/mira/chip';
-import { Mascot, MascotMini } from '@/components/mira/mascot';
-import { TypingDots } from '@/components/mira/typing-dots';
+import { AppText } from '@/components/yumi/app-text';
+import { TAB_BAR_CLEARANCE } from '@/components/yumi/bottom-nav';
+import { ChatBubble } from '@/components/yumi/chat-bubble';
+import { Chip } from '@/components/yumi/chip';
+import { Mascot, MascotMini } from '@/components/yumi/mascot';
+import { TypingDots } from '@/components/yumi/typing-dots';
 import { ChatMessage, chatSuggestions } from '@/constants/mock-data';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
@@ -26,11 +26,11 @@ type AskResponse = {
 
 const formatTime = () => new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
-/** The only pre-filled message: Mira saying hello. Nothing here pretends the user already asked anything. */
+/** The only pre-filled message: Yumi saying hello. Nothing here pretends the user already asked anything. */
 const welcomeMessage = (): ChatMessage => ({
   id: 'welcome',
-  from: 'mira',
-  text: "Hi! I'm Mira. I'm here to answer any period or body questions — no question is too weird!",
+  from: 'yumi',
+  text: "Hi! I'm Yumi. I'm here to answer any period or body questions — no question is too weird!",
   time: formatTime(),
 });
 
@@ -79,7 +79,7 @@ export default function AssistantScreen() {
       });
       const reply: ChatMessage = {
         id: `m${nextId.current++}`,
-        from: 'mira',
+        from: 'yumi',
         text: data.aiResponse,
         time: formatTime(),
         sources: data.sources,
@@ -87,10 +87,10 @@ export default function AssistantScreen() {
       setMessages((prev) => [...prev, reply]);
     } catch (err) {
       // A real network call can genuinely fail (no connection, session expired, server error) —
-      // surfaced as a normal-looking Mira message rather than crashing the screen.
+      // surfaced as a normal-looking Yumi message rather than crashing the screen.
       const reply: ChatMessage = {
         id: `m${nextId.current++}`,
-        from: 'mira',
+        from: 'yumi',
         text:
           err instanceof Error
             ? `Sorry, I couldn't get an answer just now — ${err.message}`
@@ -110,7 +110,7 @@ export default function AssistantScreen() {
       <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
         <MascotMini size={36} />
         <View>
-          <AppText variant="h3">Mira AI</AppText>
+          <AppText variant="h3">Yumi AI</AppText>
           <View style={styles.statusRow}>
             <View style={styles.onlineDot} />
             <AppText variant="small">Always here for you</AppText>
@@ -171,7 +171,7 @@ export default function AssistantScreen() {
         <TextInput
           value={input}
           onChangeText={setInput}
-          placeholder="Ask Mira anything..."
+          placeholder="Ask Yumi anything..."
           placeholderTextColor={Colors.textMuted}
           style={styles.input}
           multiline

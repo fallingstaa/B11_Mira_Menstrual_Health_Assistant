@@ -12,10 +12,10 @@ import {
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
-import { AppText } from '@/components/mira/app-text';
-import { Button } from '@/components/mira/button';
-import { Mascot } from '@/components/mira/mascot';
-import { ProgressDots } from '@/components/mira/progress-dots';
+import { AppText } from '@/components/yumi/app-text';
+import { Button } from '@/components/yumi/button';
+import { Mascot } from '@/components/yumi/mascot';
+import { ProgressDots } from '@/components/yumi/progress-dots';
 import { Colors, Spacing } from '@/constants/theme';
 
 const { width } = Dimensions.get('window');
@@ -23,7 +23,7 @@ const { width } = Dimensions.get('window');
 const pages = [
   {
     title: 'Track your cycle with ease',
-    body: 'Log your period in seconds and Mira quietly keeps track of your cycle, flow, and symptoms for you.',
+    body: 'Log your period in seconds and Yumi quietly keeps track of your cycle, flow, and symptoms for you.',
     illustration: <TrackIllustration />,
   },
   {
@@ -32,8 +32,8 @@ const pages = [
     illustration: <LearnIllustration />,
   },
   {
-    title: 'Ask Mira anything',
-    body: "No question is too awkward. Mira's AI assistant is here 24/7 to help you understand what's normal.",
+    title: 'Ask Yumi anything',
+    body: "No question is too awkward. Yumi's AI assistant is here 24/7 to help you understand what's normal.",
     illustration: <Mascot size={150} waving={false} />,
   },
 ];

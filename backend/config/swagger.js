@@ -3,7 +3,7 @@ const swaggerJsdoc = require("swagger-jsdoc");
 const { SYMPTOM_OPTIONS, MOOD_OPTIONS } = require("../src/utils/constants");
 
 /**
- * Central OpenAPI 3 definition for the Mira API. The `apis` glob below pulls in
+ * Central OpenAPI 3 definition for the Yumi API. The `apis` glob below pulls in
  * `@openapi` JSDoc blocks written directly above each route in src/routes/*.js —
  * keeping the docs next to the code they describe instead of one giant separate file.
  *
@@ -16,10 +16,10 @@ const { SYMPTOM_OPTIONS, MOOD_OPTIONS } = require("../src/utils/constants");
 const swaggerDefinition = {
   openapi: "3.0.3",
   info: {
-    title: "Mira API",
+    title: "Yumi API",
     version: "1.0.0",
     description:
-      "Backend API for Mira, a menstrual health assistant for teens. All routes are mounted under `/api`. " +
+      "Backend API for Yumi, a menstrual health assistant for teens. All routes are mounted under `/api`. " +
       "Every route except `/api/auth/*`, `/api/health`, and `/api/education/*` requires a Firebase ID token " +
       "(`Authorization: Bearer <token>`) — use the **Authorize** button below to set it once for this whole page.",
   },
@@ -28,7 +28,7 @@ const swaggerDefinition = {
     { name: "Auth", description: "Firebase-token-based registration/login/password reset" },
     { name: "Profile", description: "The signed-in user's own profile, preferences, and cycle cache" },
     { name: "Menstrual Tracking", description: "Per-day period logs and cycle prediction" },
-    { name: "AI Assistant", description: "RAG-grounded Q&A with Mira" },
+    { name: "AI Assistant", description: "RAG-grounded Q&A with Yumi" },
     { name: "Reminders", description: "In-app notifications/reminders" },
     { name: "Education", description: "Read-only educational articles" },
     { name: "System", description: "Liveness check" },
@@ -297,7 +297,7 @@ const swaggerDefinition = {
         type: "object",
         properties: {
           status: { type: "string", example: "success" },
-          message: { type: "string", example: "Mira API is healthy" },
+          message: { type: "string", example: "Yumi API is healthy" },
           timestamp: { type: "string", format: "date-time" },
         },
       },

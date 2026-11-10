@@ -111,7 +111,7 @@ type AppStateValue = {
    * there's no way for one entry point to forget to flip it and leave Home stuck out of sync.
    */
   firstPeriodRecorded: boolean;
-  /** Has the user sent Mira a chat message yet? Powers the last Getting Started checklist item. */
+  /** Has the user sent Yumi a chat message yet? Powers the last Getting Started checklist item. */
   firstQuestionAsked: boolean;
   markFirstQuestionAsked: () => void;
   /**
@@ -133,7 +133,7 @@ type AppStateValue = {
   /** Captured once at registration — lets later logic (tips, defaults) branch on teen vs adult. */
   userAge: number | null;
   setUserAge: (age: number) => void;
-  /** True once the user has told Mira this is their first period ever / they have no dates at all. */
+  /** True once the user has told Yumi this is their first period ever / they have no dates at all. */
   isBeginner: boolean;
   setIsBeginner: (value: boolean) => void;
   /**

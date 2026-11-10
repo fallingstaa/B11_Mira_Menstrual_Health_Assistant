@@ -2,21 +2,21 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet } from 'react-native';
 
-import { Button } from '@/components/mira/button';
-import { Card } from '@/components/mira/card';
-import { CycleLengthAnswer, CycleLengthQuestion, DEFAULT_CYCLE_LENGTH } from '@/components/mira/cycle-length-question';
-import { DatePickerField } from '@/components/mira/date-picker-field';
-import { DEFAULT_PERIOD_LENGTH, PeriodLengthAnswer, PeriodLengthQuestion } from '@/components/mira/period-length-question';
-import { ScreenContainer } from '@/components/mira/screen-container';
-import { ScreenHeader } from '@/components/mira/screen-header';
-import { SuccessOverlay } from '@/components/mira/success-overlay';
+import { Button } from '@/components/yumi/button';
+import { Card } from '@/components/yumi/card';
+import { CycleLengthAnswer, CycleLengthQuestion, DEFAULT_CYCLE_LENGTH } from '@/components/yumi/cycle-length-question';
+import { DatePickerField } from '@/components/yumi/date-picker-field';
+import { DEFAULT_PERIOD_LENGTH, PeriodLengthAnswer, PeriodLengthQuestion } from '@/components/yumi/period-length-question';
+import { ScreenContainer } from '@/components/yumi/screen-container';
+import { ScreenHeader } from '@/components/yumi/screen-header';
+import { SuccessOverlay } from '@/components/yumi/success-overlay';
 import { Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
 
 /**
  * Path B of the setup flow: "I remember my last period start date". Captures the Start Date
  * only — an End Date is never asked for here, because Cycle Length (start-to-start) doesn't
- * need one — then dynamic follow-ups about usual Cycle Length and Period Length so Mira has
+ * need one — then dynamic follow-ups about usual Cycle Length and Period Length so Yumi has
  * something real to predict from right away instead of defaulting to 28/5 until a full period's
  * been logged.
  */

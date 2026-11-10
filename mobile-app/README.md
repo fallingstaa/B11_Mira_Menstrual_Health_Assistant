@@ -1,6 +1,6 @@
-# Mira Mobile App
+# Yumi Mobile App
 
-Expo/React Native app for Mira - Teen Menstrual Health Assistant, targeting first-time menstruators.
+Expo/React Native app for Yumi - Teen Menstrual Health Assistant, targeting first-time menstruators.
 
 ## Setup
 

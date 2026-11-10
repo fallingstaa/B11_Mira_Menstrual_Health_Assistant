@@ -2,9 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppText } from '@/components/mira/app-text';
-import { Mascot } from '@/components/mira/mascot';
-import { ScreenContainer } from '@/components/mira/screen-container';
+import { AppText } from '@/components/yumi/app-text';
+import { Mascot } from '@/components/yumi/mascot';
+import { ScreenContainer } from '@/components/yumi/screen-container';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 
 const options: {
@@ -35,7 +35,7 @@ const options: {
     key: 'unknown',
     icon: 'sparkles-outline',
     title: " I don't remember any dates",
-    subtitle: "That's okay — Mira will start you off with sensible defaults",
+    subtitle: "That's okay — Yumi will start you off with sensible defaults",
     href: '/last-period-unknown',
     emphasized: false,
   },
@@ -57,7 +57,7 @@ export default function PeriodSetupScreen() {
         Tell us about your cycle
       </AppText>
       <AppText variant="bodyLarge" center color={Colors.textSecondary} style={styles.subtitle}>
-        A couple of quick questions so Mira can personalise your experience.
+        A couple of quick questions so Yumi can personalise your experience.
       </AppText>
 
       <View style={styles.options}>

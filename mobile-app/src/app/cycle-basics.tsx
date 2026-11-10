@@ -21,9 +21,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, G, Path, Rect, Text as SvgText } from 'react-native-svg';
 
-import { AppText } from '@/components/mira/app-text';
-import { Button } from '@/components/mira/button';
-import { ProgressDots } from '@/components/mira/progress-dots';
+import { AppText } from '@/components/yumi/app-text';
+import { Button } from '@/components/yumi/button';
+import { ProgressDots } from '@/components/yumi/progress-dots';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 
 const { width } = Dimensions.get('window');
@@ -113,7 +113,7 @@ const cards: CardMeta[] = [
     key: 'unknown',
     title: "Don't Remember Your Past Dates?",
     body: 'No problem! You can skip your past dates and start tracking from your next period.',
-    subtext: 'The more you track, the smarter Mira gets!',
+    subtext: 'The more you track, the smarter Yumi gets!',
     illustration: <AllSetIllustration />,
   },
 ];

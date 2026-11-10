@@ -3,12 +3,12 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet } from 'react-native';
 
-import { Button } from '@/components/mira/button';
-import { Card } from '@/components/mira/card';
-import { CollapsibleChipField } from '@/components/mira/collapsible-chip-field';
-import { ModalHeader } from '@/components/mira/modal-header';
-import { ScreenContainer } from '@/components/mira/screen-container';
-import { SuccessOverlay } from '@/components/mira/success-overlay';
+import { Button } from '@/components/yumi/button';
+import { Card } from '@/components/yumi/card';
+import { CollapsibleChipField } from '@/components/yumi/collapsible-chip-field';
+import { ModalHeader } from '@/components/yumi/modal-header';
+import { ScreenContainer } from '@/components/yumi/screen-container';
+import { SuccessOverlay } from '@/components/yumi/success-overlay';
 import { moodOptions, symptomOptions } from '@/constants/mock-data';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';

@@ -1,5 +1,5 @@
 /**
- * Static mock data powering the UI-only Mira prototype.
+ * Static mock data powering the UI-only Yumi prototype.
  * Nothing here touches the backend — swap for real API/state once endpoints exist.
  */
 
@@ -177,10 +177,10 @@ export type ChatSource = { sourceId: string; sourceName: string; sourceUrl: stri
 
 export type ChatMessage = {
   id: string;
-  from: 'user' | 'mira';
+  from: 'user' | 'yumi';
   text: string;
   time: string;
-  /** Only ever set on a real `from: 'mira'` reply that actually cited something — see assistant.tsx. */
+  /** Only ever set on a real `from: 'yumi'` reply that actually cited something — see assistant.tsx. */
   sources?: ChatSource[];
 };
 

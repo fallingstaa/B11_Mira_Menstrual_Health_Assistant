@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Mira",
+    "name": "Yumi",
     "slug": "mira-menstrual-health-assistant",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mira",
+    "scheme": "yumi",
     "userInterfaceStyle": "light",
     "android": {
       "package": "com.mira.menstrualhealthassistant",
@@ -45,7 +45,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Mira uses your photos to let you set a profile picture."
+          "photosPermission": "Yumi uses your photos to let you set a profile picture."
         }
       ],
       "expo-secure-store",

@@ -3,31 +3,31 @@ import { useLocalSearchParams } from 'expo-router';
 import { Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppText } from '@/components/mira/app-text';
-import { EducationAccordion, EducationParagraph } from '@/components/mira/education/accordion';
-import { CycleWheel } from '@/components/mira/education/cycle-wheel';
-import { FirstPeriodActivity } from '@/components/mira/education/first-period-activity';
-import { HygieneActivity } from '@/components/mira/education/hygiene-activity';
-import { MIRA_CLEARANCE, MiraProvider } from '@/components/mira/education/mira-companion';
-import { MythStack } from '@/components/mira/education/myth-stack';
-import { EducationSources } from '@/components/mira/education/sources';
-import { EducationSteps } from '@/components/mira/education/steps';
-import { SymptomActivity } from '@/components/mira/education/symptom-activity';
-import { TrafficLight } from '@/components/mira/education/traffic-light';
-import { IconCircle } from '@/components/mira/icon-circle';
-import { ScreenContainer } from '@/components/mira/screen-container';
-import { ScreenHeader } from '@/components/mira/screen-header';
+import { AppText } from '@/components/yumi/app-text';
+import { EducationAccordion, EducationParagraph } from '@/components/yumi/education/accordion';
+import { CycleWheel } from '@/components/yumi/education/cycle-wheel';
+import { FirstPeriodActivity } from '@/components/yumi/education/first-period-activity';
+import { HygieneActivity } from '@/components/yumi/education/hygiene-activity';
+import { YUMI_CLEARANCE, YumiProvider } from '@/components/yumi/education/yumi-companion';
+import { MythStack } from '@/components/yumi/education/myth-stack';
+import { EducationSources } from '@/components/yumi/education/sources';
+import { EducationSteps } from '@/components/yumi/education/steps';
+import { SymptomActivity } from '@/components/yumi/education/symptom-activity';
+import { TrafficLight } from '@/components/yumi/education/traffic-light';
+import { IconCircle } from '@/components/yumi/icon-circle';
+import { ScreenContainer } from '@/components/yumi/screen-container';
+import { ScreenHeader } from '@/components/yumi/screen-header';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { educationTopics, getEducationTopic, Section, Topic } from '@/constants/education-hub';
 
-// Mira Drop's opening line for each topic — friendly, no medical claims.
+// Yumi Drop's opening line for each topic — friendly, no medical claims.
 const GREETINGS: Record<string, string> = {
-  'first-period': "Hi, I'm Mira Drop! Drag the timeline and tap the cards. I'll be right here.",
-  'understanding-your-cycle': "Hi, I'm Mira Drop! Tap a phase and watch the wheel spin.",
-  'period-hygiene': "Hi, I'm Mira Drop! Let's pack a school kit together.",
-  'period-symptoms': "Hi, I'm Mira Drop! Pick a symptom to see what's going on.",
-  'myths-and-facts': "Hi, I'm Mira Drop! Ready to bust some myths? Swipe the cards!",
-  'when-to-ask-for-help': "Hi, I'm Mira Drop! Tap a light. Asking for help is always okay.",
+  'first-period': "Hi, I'm Yumi Drop! Drag the timeline and tap the cards. I'll be right here.",
+  'understanding-your-cycle': "Hi, I'm Yumi Drop! Tap a phase and watch the wheel spin.",
+  'period-hygiene': "Hi, I'm Yumi Drop! Let's pack a school kit together.",
+  'period-symptoms': "Hi, I'm Yumi Drop! Pick a symptom to see what's going on.",
+  'myths-and-facts': "Hi, I'm Yumi Drop! Ready to bust some myths? Swipe the cards!",
+  'when-to-ask-for-help': "Hi, I'm Yumi Drop! Tap a light. Asking for help is always okay.",
 };
 
 /** The one interactive widget that opens each topic. */
@@ -56,7 +56,7 @@ export default function EducationTopicScreen() {
   const number = educationTopics.indexOf(topic) + 1;
 
   return (
-    <MiraProvider greeting={GREETINGS[topic.id] ?? "Hi, I'm Mira Drop!"}>
+    <YumiProvider greeting={GREETINGS[topic.id] ?? "Hi, I'm Yumi Drop!"}>
       {/* Pinned outside the scroll area, so the back button is always reachable — even at the very end of a long topic. */}
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.headerSafe}>
         <View style={styles.headerInner}>
@@ -64,7 +64,7 @@ export default function EducationTopicScreen() {
         </View>
       </SafeAreaView>
 
-      <ScreenContainer edges={['left', 'right']} contentStyle={{ paddingBottom: MIRA_CLEARANCE + Spacing.xl }}>
+      <ScreenContainer edges={['left', 'right']} contentStyle={{ paddingBottom: YUMI_CLEARANCE + Spacing.xl }}>
         <View style={[styles.hero, { backgroundColor: topic.tint }]}>
           <IconCircle color={Colors.surface} size={64}>
             <Ionicons name={topic.icon} size={30} color={topic.color} />
@@ -98,7 +98,7 @@ export default function EducationTopicScreen() {
         </AppText>
         <EducationSources sources={topic.sources} color={topic.color} />
       </ScreenContainer>
-    </MiraProvider>
+    </YumiProvider>
   );
 }
 

@@ -1,6 +1,6 @@
-# Mira Backend API
+# Yumi Backend API
 
-Backend service for Mira - Teen Menstrual Health Assistant.
+Backend service for Yumi - Teen Menstrual Health Assistant.
 
 ## Technology
 
@@ -58,7 +58,7 @@ npm start
 
 ### 4. Verify it's running
 
-- `GET /` → `{ "message": "Mira Backend API is running" }`
+- `GET /` → `{ "message": "Yumi Backend API is running" }`
 - `GET /api/health` → reports API status and confirms Mongo/Firebase initialized without errors on startup
 
 ### 5. API docs (Swagger)

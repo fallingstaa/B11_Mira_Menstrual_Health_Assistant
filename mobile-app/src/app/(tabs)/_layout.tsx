@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router/tabs';
 
-import { BottomNav } from '@/components/mira/bottom-nav';
+import { BottomNav } from '@/components/yumi/bottom-nav';
 
 export default function TabsLayout() {
   return (

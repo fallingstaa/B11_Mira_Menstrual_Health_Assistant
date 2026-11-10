@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { AppText } from '@/components/mira/app-text';
-import { EducationTopicCard } from '@/components/mira/education/topic-card';
-import { ScreenContainer } from '@/components/mira/screen-container';
+import { AppText } from '@/components/yumi/app-text';
+import { EducationTopicCard } from '@/components/yumi/education/topic-card';
+import { ScreenContainer } from '@/components/yumi/screen-container';
 import { educationTopics } from '@/constants/education-hub';
 import { Colors, Spacing } from '@/constants/theme';
 

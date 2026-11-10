@@ -6,7 +6,7 @@ import { PeriodDayEntry } from '@/context/app-state';
 import { addDays, dateKey, daysBetween } from '@/utils/date';
 
 /**
- * Mira's local (on-device) period reminder queue — 10 touchpoints across a cycle, no backend, no
+ * Yumi's local (on-device) period reminder queue — 10 touchpoints across a cycle, no backend, no
  * push service. Scheduling is entirely derived from lastPeriodStartDate/nextPeriodStartDate/
  * averageCycleLength + periodEntries, so there's nothing here to "save": whoever changes those
  * (Path A/B setup, Calendar, record.tsx, checkin.tsx) just triggers a re-sync and the on-device
@@ -34,7 +34,7 @@ import { addDays, dateKey, daysBetween } from '@/utils/date';
  */
 export const IS_NOTIFICATION_TEST_MODE = false;
 
-const NOTIFICATION_TITLE = IS_NOTIFICATION_TEST_MODE ? '[TEST] Mira' : 'Mira';
+const NOTIFICATION_TITLE = IS_NOTIFICATION_TEST_MODE ? '[TEST] Yumi' : 'Yumi';
 
 // Fixed local send time for every date-anchored alert (Alert 1 is the one exception — it's
 // relative to "right now", not a specific day, so it ignores this).
@@ -57,11 +57,11 @@ const ALERT_IDS = [
 ] as const;
 
 /**
- * NOTE on branding: `content.color` below is the one piece of "Mira" branding a notification's
+ * NOTE on branding: `content.color` below is the one piece of "Yumi" branding a notification's
  * *content* can carry from JS, alongside the title text itself. The small app icon shown on the
  * notification banner, and iOS's "delivered by ___" attribution, are both controlled by whichever
  * app process actually delivered it — under Expo Go that's always Expo Go's own icon/name, no
- * matter what's configured here or in app.json. It only becomes Mira's real icon in a standalone
+ * matter what's configured here or in app.json. It only becomes Yumi's real icon in a standalone
  * build (dev client or production, via `expo run:ios`/EAS) — Expo Go can't render another app's
  * icon for a notification it's technically the one sending, for the same sandboxing reason it
  * can't register for real push notifications either.
@@ -70,7 +70,7 @@ const ANDROID_CHANNEL_ID = 'mira-period-reminders';
 
 let handlerConfigured = false;
 
-/** Without this, a notification that fires while Mira is already open in the foreground is silently swallowed. */
+/** Without this, a notification that fires while Yumi is already open in the foreground is silently swallowed. */
 function ensureHandler() {
   if (handlerConfigured) return;
   handlerConfigured = true;
@@ -119,7 +119,7 @@ async function scheduleIfFuture(identifier: string, date: Date, body: string) {
 }
 
 /**
- * Re-derives and (re)schedules Mira's 10 local period reminders. Call this any time
+ * Re-derives and (re)schedules Yumi's 10 local period reminders. Call this any time
  * `lastPeriodStartDate`, `nextPeriodStartDate`, `averageCycleLength`, or `periodEntries` changes.
  */
 export async function syncPeriodNotifications(

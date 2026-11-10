@@ -4,7 +4,7 @@ import { educationTopics, type IconName } from '@/constants/education-hub';
 /**
  * Data behind each topic's interactive activity. Like education-hub.ts, every educational sentence
  * here is the supplied source text verbatim — the activities only decide how it is grouped and
- * revealed. Short UI labels (tile names, button text) and Mira Drop's encouragement lines are the
+ * revealed. Short UI labels (tile names, button text) and Yumi Drop's encouragement lines are the
  * only original copy, and none of them make a medical claim.
  */
 

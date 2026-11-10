@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const DEV_TITLE = '[TEST] Mira';
+const DEV_TITLE = '[TEST] Yumi';
 const FIRE_DELAY_SECONDS = 3;
 
 /**

@@ -1,5 +1,5 @@
 /**
- * Mira design system.
+ * Yumi design system.
  * Teen-friendly menstrual health assistant — clean, warm, and reassuring.
  * UI-only: every screen in this app currently renders against mock data.
  */

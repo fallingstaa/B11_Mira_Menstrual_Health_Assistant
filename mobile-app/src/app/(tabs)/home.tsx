@@ -4,18 +4,18 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { AppText } from '@/components/mira/app-text';
-import { Button } from '@/components/mira/button';
-import { Card } from '@/components/mira/card';
-import { CycleRing } from '@/components/mira/cycle-ring';
-import { EducationTopicCard } from '@/components/mira/education/topic-card';
-import { GettingStartedCard, GettingStartedStep } from '@/components/mira/getting-started-card';
-import { HealthTipCard } from '@/components/mira/health-tip-card';
-import { IconCircle } from '@/components/mira/icon-circle';
-import { MascotMini } from '@/components/mira/mascot';
-import { QuickAction } from '@/components/mira/quick-action';
-import { ScreenContainer } from '@/components/mira/screen-container';
-import { SectionHeader } from '@/components/mira/section-header';
+import { AppText } from '@/components/yumi/app-text';
+import { Button } from '@/components/yumi/button';
+import { Card } from '@/components/yumi/card';
+import { CycleRing } from '@/components/yumi/cycle-ring';
+import { EducationTopicCard } from '@/components/yumi/education/topic-card';
+import { GettingStartedCard, GettingStartedStep } from '@/components/yumi/getting-started-card';
+import { HealthTipCard } from '@/components/yumi/health-tip-card';
+import { IconCircle } from '@/components/yumi/icon-circle';
+import { MascotMini } from '@/components/yumi/mascot';
+import { QuickAction } from '@/components/yumi/quick-action';
+import { ScreenContainer } from '@/components/yumi/screen-container';
+import { SectionHeader } from '@/components/yumi/section-header';
 import { educationTopics } from '@/constants/education-hub';
 import { healthTips } from '@/constants/mock-data';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -107,7 +107,7 @@ export default function HomeScreen() {
     },
     {
       key: 'question',
-      label: 'Ask Mira your first question',
+      label: 'Ask Yumi your first question',
       sublabel: firstQuestionAsked ? 'Completed' : 'Try the AI assistant',
       done: firstQuestionAsked,
       onPress: () => router.push('/(tabs)/assistant'),
@@ -116,7 +116,7 @@ export default function HomeScreen() {
 
   // Waiting on either app-state's own hydration (periodEntries, which firstPeriodRecorded is
   // derived from) or this screen's own profile/prediction fetch would otherwise flash the
-  // "Welcome to Mira!" first-time layout for a returning user for a moment before flipping to
+  // "Welcome to Yumi!" first-time layout for a returning user for a moment before flipping to
   // their real hero card the instant real data lands — this gate skips straight past that flash.
   if (!hydrated || !dataLoaded) {
     return (
@@ -217,7 +217,7 @@ export default function HomeScreen() {
               <Ionicons name="water" size={22} color={Colors.textOnPrimary} />
             </IconCircle>
             <AppText variant="h2" color={Colors.textOnPrimary} style={{ marginTop: Spacing.md }}>
-              Welcome to Mira!
+              Welcome to Yumi!
             </AppText>
             <AppText variant="bodyMedium" color="rgba(255,255,255,0.85)" style={{ marginTop: 2 }}>
               Your health journey starts here

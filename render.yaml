@@ -1,4 +1,4 @@
-# Render Blueprint for the Mira backend.
+# Render Blueprint for the Yumi backend.
 # Deploy: Render dashboard -> New -> Blueprint -> pick this repo. Render reads this
 # file, creates the service below, and prompts for every envVar marked sync: false
 # (kept out of git on purpose — see backend/.gitignore for the same secrets).

@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 /**
- * One document per question/answer exchange with Mira, not one growing document per
+ * One document per question/answer exchange with Yumi, not one growing document per
  * user — avoids the unbounded-embedded-array anti-pattern a single "messages[]" field
  * would hit over the life of an account. The full thread is reconstructed by querying
  * userId, sorted by createdAt (assistant.tsx has one continuous thread, no multi-

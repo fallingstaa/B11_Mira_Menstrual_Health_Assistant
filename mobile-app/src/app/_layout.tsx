@@ -8,7 +8,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DevNotificationTester } from '@/components/DevNotificationTester';
 import { Colors, FontsToLoad } from '@/constants/theme';
 import { AppStateProvider } from '@/context/app-state';
+import { Snowfall } from '@/components/yumi/christmas/snowfall';
 import { AuthProvider } from '@/context/auth-context';
+import { SeasonalThemeProvider } from '@/context/seasonal-theme';
 import { loadSavedLanguage } from '@/i18n';
 
 SplashScreen.preventAutoHideAsync();
@@ -36,6 +38,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
+        <SeasonalThemeProvider>
         <AuthProvider>
           <AppStateProvider>
             <Stack
@@ -59,10 +62,13 @@ export default function RootLayout() {
               <Stack.Screen name="notifications" />
               <Stack.Screen name="checkin-history" />
               <Stack.Screen name="education/[topicId]" />
+              <Stack.Screen name="share-card" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
             </Stack>
             <DevNotificationTester />
+            <Snowfall />
           </AppStateProvider>
         </AuthProvider>
+        </SeasonalThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -16,6 +16,7 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useAvatarAuthHeader } from '@/hooks/use-avatar-header';
 import appI18n, { currentLanguage, fromLanguageName, setAppLanguage, toLanguageName } from '@/i18n';
+import { useSeasonalTheme } from '@/context/seasonal-theme';
 import { apiRequest, apiUpload } from '@/utils/api'; //specail part
 
 type Preferences = { pushNotifications: boolean; checkinReminders: boolean };
@@ -41,6 +42,15 @@ function guessImageMimeType(uri: string): string {
 
 export default function ProfileScreen() {
   const { logout } = useAuth();
+  const { christmas, setChristmas } = useSeasonalTheme();
+
+  /** Christmas mode restarts the app (colours are applied at startup), so check first. */
+  const confirmChristmas = (on: boolean) => {
+    Alert.alert(t(on ? 'profile.christmasOnTitle' : 'profile.christmasOffTitle'), t('profile.christmasRestart'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('profile.restartNow'), onPress: () => setChristmas(on) },
+    ]);
+  };
   const { t, i18n } = useTranslation();
   // The device's language is the source of truth (see i18n/index.ts); the account copy follows it.
   const appLanguageName = toLanguageName(i18n.language === 'km' ? 'km' : 'en');
@@ -315,6 +325,15 @@ export default function ProfileScreen() {
           label={t('profile.checkinReminders')}
           toggle={profile?.preferences.checkinReminders ?? true}
           onToggle={(value) => updatePreference({ checkinReminders: value })}
+        />
+        <Divider />
+        <SettingsRow
+          icon="snow-outline"
+          color="#1E7A4C"
+          tint="#E6F4EC"
+          label={t('profile.christmasMode')}
+          toggle={christmas}
+          onToggle={confirmChristmas}
         />
       </SectionCard>
 

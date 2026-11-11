@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { Platform, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { Edge, SafeAreaView } from 'react-native-safe-area-context';
 
+import { HangingOrnaments } from '@/components/yumi/christmas/decorations';
 import { TAB_BAR_CLEARANCE } from '@/components/yumi/bottom-nav';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -35,6 +36,7 @@ export function ScreenContainer({
 }: Props) {
   return (
     <SafeAreaView style={[styles.safe, style]} edges={edges}>
+      {tabBar ? <HangingOrnaments /> : null}
       <View style={styles.centerer}>
         {scroll ? (
           <ScrollView

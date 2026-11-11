@@ -11,6 +11,11 @@ const aiConversationSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     question: { type: String, required: true, maxlength: 2000 },
+    // The English wording actually used for retrieval (the classifier's translation for a
+    // Khmer question; the question itself for English) and the language Yumi answered in —
+    // kept so retrieval quality can be compared across languages later.
+    searchQuery: { type: String, maxlength: 2000 },
+    language: { type: String, enum: ["en", "km"], default: "en" },
     retrievedContext: { type: String, default: "" },
     aiResponse: { type: String, required: true },
     sourceIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "KnowledgeSource" }],

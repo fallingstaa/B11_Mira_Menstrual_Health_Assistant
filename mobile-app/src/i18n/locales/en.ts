@@ -521,6 +521,7 @@ export const en = {
     placeholder: 'Ask Yumi anything...',
     send: 'Send',
     error: "Sorry, I couldn't get an answer just now. Please try again in a moment.",
+    unavailable: "Yumi's AI helper is temporarily unavailable — please try again in a moment.",
     errorWithReason: "Sorry, I couldn't get an answer just now — {{reason}}",
     suggestions: {
       cramps: 'Why do I get cramps?',
@@ -584,7 +585,7 @@ export const en = {
     preferences: 'Preferences',
     language: 'Language',
     chooseLanguage: 'Choose Language',
-    languageNote: "The whole app switches language right away. Yumi's AI answers are still in English for now.",
+    languageNote: 'The whole app switches language right away, and Yumi AI answers in the language you choose.',
     pushNotifications: 'Push notifications',
     checkinReminders: 'Daily check-in reminders',
     privacy: 'Privacy',

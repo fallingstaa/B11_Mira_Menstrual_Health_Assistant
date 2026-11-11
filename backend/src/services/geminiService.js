@@ -15,8 +15,18 @@ const GENERATION_MODEL = "gemini-3.5-flash-lite";
 // relevant (see the empty-context guard in generateReply below). Deliberately the same
 // wording as the system prompt's own instruction for a partial-context "I don't know"
 // case, so the tone is identical regardless of which path produced it.
-const NO_CONTEXT_REPLY =
-  "I don't have verified information about that in my current sources yet. It's best to ask a trusted adult, teacher, or doctor about this one!";
+const NO_CONTEXT_REPLY = {
+  en: "I don't have verified information about that in my current sources yet. It's best to ask a trusted adult, teacher, or doctor about this one!",
+  km: "ខ្ញុំមិនទាន់មានព័ត៌មានដែលបានផ្ទៀងផ្ទាត់អំពីរឿងនេះនៅក្នុងប្រភពរបស់ខ្ញុំនៅឡើយទេ។ ល្អបំផុតគឺសួរមនុស្សពេញវ័យដែលអ្នកទុកចិត្ត គ្រូ ឬវេជ្ជបណ្ឌិត!",
+};
+
+// Appended when the answer must be in Khmer. The reference material stays English (the verified
+// sources), so the model reads English and writes Khmer in the same call — no separate
+// translation step. Medical terms keep the English word in brackets so a reader can look it up
+// or show it to a doctor, matching the app's Khmer education content.
+const KHMER_REPLY_ADDENDUM = `
+
+Write your ENTIRE answer in Khmer (ភាសាខ្មែរ), even though the reference material is in English. Use simple, natural, everyday Khmer that a Cambodian teenager would understand — not a word-for-word translation. For medical terms, give the Khmer word and, the first time, the English term in brackets (for example: ការឈឺពោះរដូវ (cramps)). Apart from those bracketed terms, never mix English words into a Khmer sentence — write every other word in Khmer. The "use ONLY the reference material" rule still applies: translate what the material says, never add facts it doesn't contain. If you have to say you don't have the information, say that in Khmer too.`;
 
 // Response-style fix, round 3: round 2 (see git history) only eased off from the 3rd question
 // onward — the actual rule is narrower still: full comfort/reassurance on the user's 1st question
@@ -45,8 +55,9 @@ const LATER_TURN_ADDENDUM = `
 
 This is not the user's first question this session — they've already been warmly greeted and reassured once. By default, minimize the emotional comfort/reassurance opening for this answer: lead with the actual answer instead of gently acknowledging feelings first, and keep it a bit more concise. The one exception: if THIS specific question sounds nervous, worried, embarrassed, or emotionally serious, set the default aside and give it the full warm, reassuring treatment regardless — minimizing comfort is only for ordinary factual follow-up questions, never for a question that actually needs it.`;
 
-function buildSystemPrompt(turnNumber) {
-  return turnNumber >= 2 ? BASE_SYSTEM_PROMPT + LATER_TURN_ADDENDUM : BASE_SYSTEM_PROMPT;
+function buildSystemPrompt(turnNumber, language = "en") {
+  const base = turnNumber >= 2 ? BASE_SYSTEM_PROMPT + LATER_TURN_ADDENDUM : BASE_SYSTEM_PROMPT;
+  return language === "km" ? base + KHMER_REPLY_ADDENDUM : base;
 }
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -62,23 +73,32 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
  * (1 for their first question, 2 for their second, ...) — see aiController.js for how it's
  * counted. Only changes whether buildSystemPrompt appends the later-turn addendum; defaults to 1
  * (the full-warmth prompt) so an existing/omitted caller behaves exactly as before.
+ *
+ * `language` ("en" | "km") is the language to answer in; `englishQuestion` is the classifier's
+ * English rendering of a non-English question (see safetyService.checkQuestion).
  */
-async function generateReply(question, context, turnNumber = 1) {
+async function generateReply(question, context, turnNumber = 1, language = "en", englishQuestion = question) {
   // No Gemini call at all when nothing relevant was retrieved — a guaranteed-safe,
   // zero-cost, zero-hallucination-risk response by construction, rather than trusting
   // the prompt alone to stop the model from guessing when handed nothing to work with.
   if (!context) {
-    return NO_CONTEXT_REPLY;
+    return NO_CONTEXT_REPLY[language] ?? NO_CONTEXT_REPLY.en;
   }
 
-  const prompt = `Reference material:\n${context}\n\nQuestion: ${question}`;
+  // For a non-English question the classifier's English rendering is included too, so the
+  // model reads the question unambiguously against the English material.
+  const questionLine =
+    englishQuestion && englishQuestion !== question
+      ? `Question: ${question}\n(English meaning: ${englishQuestion})`
+      : `Question: ${question}`;
+  const prompt = `Reference material:\n${context}\n\n${questionLine}`;
 
   let response;
   try {
     response = await ai.models.generateContent({
       model: GENERATION_MODEL,
       contents: prompt,
-      config: { systemInstruction: buildSystemPrompt(turnNumber) },
+      config: { systemInstruction: buildSystemPrompt(turnNumber, language) },
     });
   } catch (err) {
     throw wrapAIServiceError(err, "geminiService.generateReply");
@@ -87,4 +107,4 @@ async function generateReply(question, context, turnNumber = 1) {
   return response.text;
 }
 
-module.exports = { generateReply };
+module.exports = { generateReply, buildSystemPrompt, NO_CONTEXT_REPLY };

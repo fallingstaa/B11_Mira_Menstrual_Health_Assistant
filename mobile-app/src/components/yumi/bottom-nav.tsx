@@ -6,6 +6,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/yumi/app-text';
+import { TabBarGarland } from '@/components/yumi/christmas/decorations';
 import { Colors, Radius, Shadow, Spacing } from '@/constants/theme';
 
 /**
@@ -38,6 +39,7 @@ export function BottomNav({ state, emitter, navigateToTab }: BottomTabBarProps) 
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]} pointerEvents="box-none">
       <View style={[styles.bar, Shadow.raised]}>
+        <TabBarGarland />
         {state.routes.map((route, index) => {
           const focused = state.index === index;
           const meta = ICONS[route.name] ?? ICONS.home;

@@ -8,6 +8,7 @@ import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/yumi/app-text';
 import { Button } from '@/components/yumi/button';
 import { Card } from '@/components/yumi/card';
+import { ChristmasBanner } from '@/components/yumi/christmas/christmas-banner';
 import { CycleRing } from '@/components/yumi/cycle-ring';
 import { EducationTopicCard } from '@/components/yumi/education/topic-card';
 import { GettingStartedCard, GettingStartedStep } from '@/components/yumi/getting-started-card';
@@ -21,6 +22,7 @@ import { getEducationTopics } from '@/constants/education-hub';
 import { healthTips } from '@/constants/mock-data';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
+import { useSeasonalTheme } from '@/context/seasonal-theme';
 import i18n, { formatDays, phaseName } from '@/i18n';
 import { useAvatarAuthHeader } from '@/hooks/use-avatar-header';
 import { apiRequest } from '@/utils/api';
@@ -56,6 +58,7 @@ function relativePeriodText(nextPeriodStartDate: Date): string {
 export default function HomeScreen() {
   const { firstPeriodRecorded, firstQuestionAsked, hydrated } = useAppState();
   const { t } = useTranslation();
+  const { christmas } = useSeasonalTheme();
   const educationTopics = getEducationTopics();
   const featuredTopics = educationTopics.slice(1, 3);
   const [profile, setProfile] = useState<HomeProfile | null>(null);
@@ -240,6 +243,8 @@ export default function HomeScreen() {
         </Card>
       )}
 
+      {christmas ? <ChristmasBanner name={profile?.name} /> : null}
+
       <CycleBasicsBanner />
 
       <View style={styles.section}>
@@ -259,6 +264,7 @@ export default function HomeScreen() {
           <QuickAction label={t('home.actions.education')} icon="book" color={Colors.lavender} tint={Colors.lavenderTint} onPress={() => router.push('/(tabs)/education')} />
           <QuickAction label={t('home.actions.assistant')} icon="chatbubble-ellipses" color={Colors.peach} tint={Colors.peachTint} onPress={() => router.push('/(tabs)/assistant')} />
           <QuickAction label={t('home.actions.reminders')} icon="alarm" color={Colors.info} tint={Colors.infoTint} onPress={() => router.push('/notifications')} />
+          <QuickAction label={t('home.actions.shareCard')} icon="sparkles" color={Colors.lavender} tint={Colors.lavenderTint} onPress={() => router.push('/share-card')} />
           <QuickAction label={t('home.actions.checkins')} icon="heart" color={Colors.success} tint={Colors.successTint} onPress={() => router.push('/checkin-history')} />
         </ScrollView>
       </View>

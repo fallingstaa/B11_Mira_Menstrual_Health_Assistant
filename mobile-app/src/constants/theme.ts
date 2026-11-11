@@ -6,7 +6,9 @@
 
 import '@/global.css';
 
-export const Colors = {
+import { CHRISTMAS_AT_STARTUP } from '@/constants/season';
+
+const BaseColors = {
   // Brand
   primary: '#AD0E38',
   primaryDark: '#7C0A28',
@@ -50,6 +52,34 @@ export const Colors = {
   textOnPrimary: '#FFFFFF',
   overlay: 'rgba(26, 12, 16, 0.45)',
 } as const;
+
+/**
+ * Christmas mode palette (Profile → Christmas mode). Christmas red stays the main colour, its
+ * dark partner becomes pine green — so every red→dark gradient in the app turns red→green —
+ * and the secondary accents become green, gold and pine. Text and neutrals don't change, so
+ * contrast stays the same as the normal theme.
+ */
+const ChristmasColors: Partial<Record<keyof typeof BaseColors, string>> = {
+  primary: '#C41E3A',
+  primaryDark: '#165B33',
+  primaryLight: '#E25C6E',
+  tint50: '#FFF6EE',
+  tint100: '#FCE4E4',
+  tint200: '#F6C6C6',
+  tint300: '#EE9A9A',
+  lavender: '#1E7A4C',
+  lavenderTint: '#E6F4EC',
+  peach: '#D4A017',
+  peachTint: '#FBF3DC',
+  teal: '#2E8B57',
+  tealTint: '#E3F3EA',
+  surfaceAlt: '#FFF9F2',
+};
+
+/** The app's colours — the Christmas set when Christmas mode was on at startup. */
+export const Colors: { readonly [K in keyof typeof BaseColors]: string } = CHRISTMAS_AT_STARTUP
+  ? { ...BaseColors, ...ChristmasColors }
+  : BaseColors;
 
 export const Fonts = {
   regular: 'Poppins_400Regular',

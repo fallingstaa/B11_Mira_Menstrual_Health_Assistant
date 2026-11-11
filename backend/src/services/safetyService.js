@@ -23,16 +23,23 @@ Determine whether the user's question is asking for either of the following:
 
 General health education questions are ALLOWED, even when they touch on symptoms, when to see a doctor, or the general safety of common remedies — for example "why do I get cramps", "when should I see a doctor about my period", and "is heat safe for period pain" are all ALLOWED. Only block requests asking to diagnose the user personally, or asking for a specific medication/dosage decision.
 
-Respond with exactly one word: BLOCK or ALLOW.`;
+The question may be written in English or Khmer — apply exactly the same rules to both.
+
+Also translate the question into clear, natural English (if it is already English, repeat it unchanged). This English version is only used to search an English knowledge base, so keep its meaning exact and add nothing.
+
+Respond with JSON only, in exactly this shape:
+{"decision": "ALLOW" or "BLOCK", "english": "<the question in English>"}`;
 
 /**
- * Shown instead of a generated answer whenever isUnsafeQuestion() flags a question —
+ * Shown (in the reply language) instead of a generated answer whenever checkQuestion() flags a question —
  * distinct wording from geminiService.js's NO_CONTEXT_REPLY on purpose: that one means
  * "I don't have information on this," this one means "I'm choosing not to answer this
  * directly," which is a different message to send.
  */
-const SAFETY_DISCLAIMER =
-  "That's something best answered by a real doctor or trusted adult, not me — I'm not able to diagnose symptoms or recommend medications or dosages. Please reach out to a doctor, school nurse, or someone you trust so they can help you properly with this one!";
+const SAFETY_DISCLAIMER = {
+  en: "That's something best answered by a real doctor or trusted adult, not me — I'm not able to diagnose symptoms or recommend medications or dosages. Please reach out to a doctor, school nurse, or someone you trust so they can help you properly with this one!",
+  km: "នេះជាសំណួរដែលវេជ្ជបណ្ឌិត ឬមនុស្សពេញវ័យដែលអ្នកទុកចិត្ត អាចឆ្លើយបានល្អជាងខ្ញុំ — ខ្ញុំមិនអាចធ្វើរោគវិនិច្ឆ័យ ឬណែនាំថ្នាំ ឬកម្រិតថ្នាំបានទេ។ សូមទាក់ទងវេជ្ជបណ្ឌិត គិលានុបដ្ឋាយិកាសាលា ឬនរណាម្នាក់ដែលអ្នកទុកចិត្ត ដើម្បីឱ្យពួកគេអាចជួយអ្នកបានត្រឹមត្រូវ!",
+};
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -45,8 +52,30 @@ function classify(model, question) {
   return ai.models.generateContent({
     model,
     contents: question,
-    config: { systemInstruction: CLASSIFIER_PROMPT },
+    config: { systemInstruction: CLASSIFIER_PROMPT, responseMimeType: "application/json" },
   });
+}
+
+/**
+ * Reads the classifier's `{"decision", "english"}` reply. Fails closed on the decision: if the
+ * reply can't be parsed as JSON, any "BLOCK" in the raw text still blocks. The English search
+ * text falls back to the original question, so retrieval still runs (just less well for Khmer).
+ */
+function parseClassifierReply(text, question) {
+  const raw = (text || "").trim();
+  let parsed = null;
+  try {
+    // Tolerates a ```json fence or stray text around the object.
+    const json = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
+    parsed = JSON.parse(json);
+  } catch {
+    parsed = null;
+  }
+
+  const decision = typeof parsed?.decision === "string" ? parsed.decision.toUpperCase() : "";
+  const unsafe = parsed ? decision.startsWith("BLOCK") : /\bBLOCK\b/i.test(raw);
+  const english = typeof parsed?.english === "string" && parsed.english.trim() ? parsed.english.trim() : question;
+  return { unsafe, searchQuery: english };
 }
 
 /** Overloaded (503) or rate-limited (429) — worth trying another model. */
@@ -54,12 +83,19 @@ function isCapacityError(err) {
   return err?.status === 503 || err?.status === 429;
 }
 
-async function isUnsafeQuestion(question) {
+/**
+ * One Gemini call that does two jobs: the safety decision, and an English version of the
+ * question for retrieval (the knowledge base is English, and Khmer questions match it less
+ * strongly). Folded into the existing classifier call on purpose, so supporting Khmer adds
+ * no extra request against the free-tier daily limit.
+ * Returns `{ unsafe, searchQuery }`.
+ */
+async function checkQuestion(question) {
   let response;
   try {
     response = await classify(CLASSIFIER_MODEL, question);
   } catch (err) {
-    if (!isCapacityError(err)) throw wrapAIServiceError(err, "safetyService.isUnsafeQuestion");
+    if (!isCapacityError(err)) throw wrapAIServiceError(err, "safetyService.checkQuestion");
     console.warn(
       `Classifier ${CLASSIFIER_MODEL} unavailable (${err.status}), falling back to ${FALLBACK_CLASSIFIER_MODEL}`
     );
@@ -67,11 +103,11 @@ async function isUnsafeQuestion(question) {
       response = await classify(FALLBACK_CLASSIFIER_MODEL, question);
     } catch (fallbackErr) {
       // Still fail closed: never answer a question that couldn't be safety-checked.
-      throw wrapAIServiceError(fallbackErr, "safetyService.isUnsafeQuestion (fallback)");
+      throw wrapAIServiceError(fallbackErr, "safetyService.checkQuestion (fallback)");
     }
   }
 
-  return response.text.trim().toUpperCase().startsWith("BLOCK");
+  return parseClassifierReply(response.text, question);
 }
 
-module.exports = { isUnsafeQuestion, SAFETY_DISCLAIMER };
+module.exports = { checkQuestion, parseClassifierReply, SAFETY_DISCLAIMER };

@@ -16,7 +16,7 @@ import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/context/app-state';
 import { useLocalizedTextStyle } from '@/i18n/fonts';
 import { formatTime } from '@/utils/date';
-import { apiRequest } from '@/utils/api';
+import { ApiError, apiRequest } from '@/utils/api';
 
 // Shape of the real POST /api/ai/ask response — see backend/src/controllers/aiController.js.
 type AskResponse = {
@@ -46,7 +46,7 @@ const welcomeMessage = (): ChatMessage => ({
 
 export default function AssistantScreen() {
   const { markFirstQuestionAsked } = useAppState();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const inputStyle = useLocalizedTextStyle(styles.input);
   const [messages, setMessages] = useState<ChatMessage[]>(() => [welcomeMessage()]);
   const [input, setInput] = useState('');
@@ -86,7 +86,9 @@ export default function AssistantScreen() {
       // worth popping LogBox's red-screen overlay over.
       const data = await apiRequest<AskResponse>('/ai/ask', {
         method: 'POST',
-        body: { question: trimmed },
+        // The app's language, so Yumi answers in it (a Khmer-script question is always answered
+        // in Khmer regardless — see backend/src/utils/language.js).
+        body: { question: trimmed, language: i18n.language === 'km' ? 'km' : 'en' },
         quiet: true,
       });
       const reply: ChatMessage = {
@@ -103,10 +105,14 @@ export default function AssistantScreen() {
       const reply: ChatMessage = {
         id: `m${nextId.current++}`,
         from: 'yumi',
+        // AI_UNAVAILABLE (Gemini down/rate-limited) comes with an English server message, so it's
+        // shown from the app's own translation instead.
         text:
-          err instanceof Error
-            ? t('assistant.errorWithReason', { reason: err.message })
-            : t('assistant.error'),
+          err instanceof ApiError && err.code === 'AI_UNAVAILABLE'
+            ? t('assistant.unavailable')
+            : err instanceof Error
+              ? t('assistant.errorWithReason', { reason: err.message })
+              : t('assistant.error'),
         time: now(),
       };
       setMessages((prev) => [...prev, reply]);

@@ -522,6 +522,7 @@ export const km: Translation = {
     placeholder: 'សួរ Yumi អ្វីក៏បាន...',
     send: 'ផ្ញើ',
     error: 'សូមអភ័យទោស ខ្ញុំមិនអាចរកចម្លើយបានទេនៅពេលនេះ។ សូមព្យាយាមម្តងទៀតបន្តិចក្រោយ។',
+    unavailable: 'ជំនួយការ AI របស់ Yumi មិនអាចប្រើបានបណ្តោះអាសន្ន — សូមព្យាយាមម្តងទៀតបន្តិចក្រោយ។',
     errorWithReason: 'សូមអភ័យទោស ខ្ញុំមិនអាចរកចម្លើយបានទេនៅពេលនេះ — {{reason}}',
     suggestions: {
       cramps: 'ហេតុអ្វីខ្ញុំឈឺពោះពេលមករដូវ?',
@@ -585,7 +586,7 @@ export const km: Translation = {
     preferences: 'ការកំណត់',
     language: 'ភាសា',
     chooseLanguage: 'ជ្រើសរើសភាសា',
-    languageNote: 'កម្មវិធីទាំងមូលនឹងប្តូរភាសាភ្លាមៗ។ ចម្លើយរបស់ AI Yumi នៅតែជាភាសាអង់គ្លេសសិននៅឡើយ។',
+    languageNote: 'កម្មវិធីទាំងមូលនឹងប្តូរភាសាភ្លាមៗ ហើយ Yumi AI នឹងឆ្លើយជាភាសាដែលអ្នកជ្រើសរើស។',
     pushNotifications: 'ការជូនដំណឹង',
     checkinReminders: 'ការរំលឹកឱ្យកត់ត្រាប្រចាំថ្ងៃ',
     privacy: 'ឯកជនភាព',

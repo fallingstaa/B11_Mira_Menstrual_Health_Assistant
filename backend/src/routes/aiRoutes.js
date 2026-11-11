@@ -14,9 +14,10 @@ router.use(authMiddleware);
  *     tags: [AI Assistant]
  *     summary: Ask Yumi a health question
  *     description: >
- *       Creates an `AIConversation` turn end-to-end today, but `ragService.js` and `geminiService.js` are still
- *       placeholders — `retrieveContext()` always returns empty context and `generateReply()` always returns a
- *       canned string, regardless of the question. Real Gemini/RAG wiring is on the backend to-do list.
+ *       Safety-checks the question (blocked diagnosis/medication questions get a fixed disclaimer), searches the
+ *       English knowledge base, and writes an answer grounded only in what was found, with its sources. Khmer
+ *       questions are translated to English for the search inside the same safety-check call, and the answer is
+ *       written in the request's `language` (a Khmer-script question is always answered in Khmer).
  *     requestBody:
  *       required: true
  *       content:

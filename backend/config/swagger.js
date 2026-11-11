@@ -234,8 +234,10 @@ const swaggerDefinition = {
           question: { type: "string", example: "Why do I get cramps?" },
           language: {
             type: "string",
-            example: "English",
-            description: "Accepted by the request body today, but NOT YET stored/used by aiController.js — see backend to-do list.",
+            enum: ["en", "km"],
+            example: "km",
+            description:
+              "The app's current language. Yumi answers in this language — except a question written in Khmer script is always answered in Khmer. Defaults to English.",
           },
         },
       },

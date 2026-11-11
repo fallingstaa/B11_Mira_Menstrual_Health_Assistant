@@ -8,7 +8,8 @@ const { success, successMessage, error } = require("../utils/responseHandler");
 const asyncHandler = require("../utils/asyncHandler");
 const { retrieveContext } = require("../services/ragService");
 const { generateReply } = require("../services/geminiService");
-const { isUnsafeQuestion, SAFETY_DISCLAIMER } = require("../services/safetyService");
+const { checkQuestion, SAFETY_DISCLAIMER } = require("../services/safetyService");
+const { resolveReplyLanguage } = require("../utils/language");
 
 // How long a gap in questions still counts as "the same conversation" for
 // geminiService.js's turnNumber (see buildSystemPrompt there) — long enough that a normal
@@ -17,8 +18,11 @@ const { isUnsafeQuestion, SAFETY_DISCLAIMER } = require("../services/safetyServi
 const SESSION_WINDOW_MS = 30 * 60 * 1000;
 
 const ask = asyncHandler(async (req, res) => {
-  const { question } = req.body;
+  const { question, language: requestedLanguage } = req.body;
   if (!question || !question.trim()) return error(res, "question is required", 400);
+
+  // Khmer question -> Khmer answer; otherwise whatever language the app is set to ("en"/"km").
+  const language = resolveReplyLanguage(question, requestedLanguage);
 
   // This question's position among this user's questions in the current session — 1 for their
   // first question in the last 30 minutes, 2 for their second, etc. (see SESSION_WINDOW_MS).
@@ -41,16 +45,23 @@ const ask = asyncHandler(async (req, res) => {
   let sourceIds = [];
   let aiResponse;
 
-  if (await isUnsafeQuestion(question)) {
-    aiResponse = SAFETY_DISCLAIMER;
+  //
+  // The same classifier call also returns an English version of the question (`searchQuery`):
+  // the knowledge base is English, and searching with the English wording matches it far more
+  // reliably than the Khmer original — at no extra Gemini request.
+  const { unsafe, searchQuery } = await checkQuestion(question);
+  if (unsafe) {
+    aiResponse = SAFETY_DISCLAIMER[language];
   } else {
-    ({ context, sourceIds } = await retrieveContext(question));
-    aiResponse = await generateReply(question, context, turnNumber);
+    ({ context, sourceIds } = await retrieveContext(searchQuery));
+    aiResponse = await generateReply(question, context, turnNumber, language, searchQuery);
   }
 
   const turn = await AIConversation.create({
     userId: req.user._id,
     question,
+    searchQuery,
+    language,
     retrievedContext: context,
     aiResponse,
     sourceIds,
